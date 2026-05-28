@@ -22,11 +22,8 @@ export default function Page() {
         <CardContent className="text-sm text-muted-foreground">
           <p>This is the public landing page for the frontend app.</p>
         </CardContent>
-        <CardFooter className="gap-2">
+        <CardFooter>
           <Button asChild>
-            <Link href="/login">Go to Login</Link>
-          </Button>
-          <Button variant="outline" asChild>
             <Link href="/dashboard">Go to Dashboard</Link>
           </Button>
         </CardFooter>

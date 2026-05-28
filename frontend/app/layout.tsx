@@ -2,7 +2,9 @@ import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { SessionProvider } from "@/components/session-provider"
+import { SessionWatcher } from "@/components/session-watcher"
+import { cn } from "@/lib/utils"
 
 const spaceGrotesk = Space_Grotesk({subsets:['latin'],variable:'--font-sans'})
 
@@ -23,7 +25,10 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", spaceGrotesk.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <SessionProvider>
+          <SessionWatcher />
+          <ThemeProvider>{children}</ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   )
