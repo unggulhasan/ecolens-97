@@ -3,7 +3,7 @@
 OpenID Configuration
 
 ```
-https://cognito-idp.us-east-1.amazonaws.com/us-east-1_dzxlUykHu/.well-known/openid-configuration
+https://cognito-idp.ap-southeast-4.amazonaws.com/ap-southeast-4_l9t8bvLIg/.well-known/openid-configuration
 ```
 
 Ecolens Web Console

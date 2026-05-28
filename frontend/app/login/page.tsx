@@ -1,12 +1,5 @@
 import Link from "next/link"
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Card,
   CardContent,
@@ -15,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { signIn } from "@/auth"
 
 export default function LoginPage() {
   return (
@@ -24,12 +18,17 @@ export default function LoginPage() {
           <CardTitle>Login</CardTitle>
           <CardDescription>Sign in to continue to your dashboard.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Avatar>
-            <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-            <AvatarFallback>CN</AvatarFallback>
-            <AvatarBadge className="bg-green-600 dark:bg-green-800" />
-          </Avatar>
+        <CardContent>
+          <form
+            action={async () => {
+              "use server"
+              await signIn("cognito", { redirectTo: "/dashboard" })
+            }}
+          >
+            <Button type="submit" className="w-full">
+              Sign in with Cognito
+            </Button>
+          </form>
         </CardContent>
         <CardFooter>
           <Button variant="ghost" asChild>

@@ -56,29 +56,28 @@ resource "aws_cognito_user_pool" "main" {
 
 resource "aws_cognito_user_pool_client" "main" {
   name = "${var.app_name}-${var.environment}-client"
-
   user_pool_id = aws_cognito_user_pool.main.id
+
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_flows                  = ["code"]
+  allowed_oauth_scopes                 = ["email", "openid", "profile"]
+
+  enable_token_revocation             = true
 
   generate_secret                     = false
   prevent_user_existence_errors       = "ENABLED"
   supported_identity_providers        = ["COGNITO"]
 
   callback_urls = [
-    "http://localhost:3000/callback"
+    "http://localhost:3000/api/auth/callback/cognito"
   ]
 
   logout_urls = [
     "http://localhost:3000"
   ]
 
-  allowed_oauth_flows_user_pool_client = true
-  allowed_oauth_flows                  = ["code"]
-  allowed_oauth_scopes                 = ["email", "openid", "profile"]
-
   explicit_auth_flows = [
-    "ALLOW_USER_PASSWORD_AUTH",
-    "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_USER_SRP_AUTH"
+    ALLOW_REFRESH_TOKEN_AUTH
   ]
 }
 
