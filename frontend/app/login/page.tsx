@@ -1,4 +1,10 @@
 import Link from "next/link"
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -19,9 +25,11 @@ export default function LoginPage() {
           <CardDescription>Sign in to continue to your dashboard.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input type="email" placeholder="Email" aria-label="Email" />
-          <Input type="password" placeholder="Password" aria-label="Password" />
-          <Button className="w-full">Sign In</Button>
+          <Avatar>
+            <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+            <AvatarFallback>CN</AvatarFallback>
+            <AvatarBadge className="bg-green-600 dark:bg-green-800" />
+          </Avatar>
         </CardContent>
         <CardFooter>
           <Button variant="ghost" asChild>
