@@ -77,7 +77,7 @@ resource "aws_cognito_user_pool_client" "main" {
   ]
 
   explicit_auth_flows = [
-    ALLOW_REFRESH_TOKEN_AUTH
+    "ALLOW_REFRESH_TOKEN_AUTH"
   ]
 }
 
