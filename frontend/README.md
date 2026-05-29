@@ -2,6 +2,11 @@
 
 This is a Next.js template with shadcn/ui.
 
+## Environment variables
+Copy `./.env.local.example` to `./.env.local` and fill values if you are running the frontend without Terraform.
+If you run `terraform apply` from `../infra`, Terraform will generate `./.env.local` for you.
+
+
 ## Adding components
 
 To add components to your app, run the following command:

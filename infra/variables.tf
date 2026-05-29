@@ -41,3 +41,9 @@ variable "gcp_project_id" {
   description = "GCP project ID for secondary cloud resources"
   type        = string
 }
+
+variable "auth_secret" {
+  description = "AUTH_SECRET used by the frontend (kept constant across applies)"
+  type        = string
+  sensitive   = true
+}
