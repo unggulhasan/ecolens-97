@@ -76,7 +76,7 @@ resource "aws_apigatewayv2_stage" "default" {
 locals {
   api_lambda_functions = {
     hello = aws_lambda_function.hello
-    # users = aws_lambda_function.users
+    # add your new lambda here
   }
 }
 
