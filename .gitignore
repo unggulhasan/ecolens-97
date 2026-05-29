@@ -4,6 +4,7 @@
 .idea/
 .vscode/
 .DS_Store
+.cursor/
 
 # Terraform
 infra/build/
