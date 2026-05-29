@@ -1,6 +1,9 @@
 /node_modules
 /package.json
 *.terraform.tfstate
+.idea/
+.vscode/
+.DS_Store
 
 # Terraform
 infra/build/
