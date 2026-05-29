@@ -81,7 +81,11 @@ resource "aws_cognito_user_pool_client" "main" {
   ]
 }
 
+resource "random_id" "domain_suffix" {
+  byte_length = 4
+}
+
 resource "aws_cognito_user_pool_domain" "main" {
-  domain       = var.cognito_domain_prefix
+  domain       = "${var.cognito_domain_prefix}-${random_id.domain_suffix.hex}"
   user_pool_id = aws_cognito_user_pool.main.id
 }
