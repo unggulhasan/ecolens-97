@@ -1,4 +1,4 @@
-import { signOut } from "@/auth"
+import { signOutWithCognito } from "@/auth-actions"
 import { Button } from "@/components/ui/button"
 
 export function LogoutButton() {
@@ -6,7 +6,7 @@ export function LogoutButton() {
     <form
       action={async () => {
         "use server"
-        await signOut({ redirectTo: "/login" })
+        await signOutWithCognito()
       }}
     >
       <Button type="submit" variant="outline" size="sm">

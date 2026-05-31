@@ -74,7 +74,8 @@ resource "aws_cognito_user_pool_client" "main" {
   ]
 
   logout_urls = [
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://localhost:3000/login",
   ]
 
   explicit_auth_flows = [
