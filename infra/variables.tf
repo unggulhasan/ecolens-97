@@ -40,6 +40,7 @@ variable "media_bucket_name" {
 variable "gcp_project_id" {
   description = "GCP project ID for secondary cloud resources"
   type        = string
+  default     = "ecolens-497810"
 }
 variable "gcp_region" {
   description = "GCP Region"
