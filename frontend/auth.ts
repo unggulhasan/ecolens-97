@@ -1,41 +1,55 @@
-// auth.ts (root level)
-import NextAuth from 'next-auth'
-import Cognito from 'next-auth/providers/cognito'
+import NextAuth, { type NextAuthConfig } from "next-auth"
+import Cognito from "next-auth/providers/cognito"
+import type { JWT } from "next-auth/jwt"
+import { getCognitoSignUpAuthorizationUrl } from "@/lib/cognito"
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const cognitoSignUpAuthorizationUrl =
+  process.env.AUTH_COGNITO_DOMAIN && process.env.AUTH_COGNITO_ISSUER
+    ? getCognitoSignUpAuthorizationUrl()
+    : undefined
+
+const cognitoClientOptions = {
+  clientId: process.env.AUTH_COGNITO_ID!,
+  issuer: process.env.AUTH_COGNITO_ISSUER!,
+  checks: ["pkce", "state"] as ("pkce" | "state")[],
+  client: {
+    token_endpoint_auth_method: "none" as const,
+  },
+  authorization: {
+    params: {
+      scope: "openid profile email",
+      response_type: "code",
+    },
+  },
+}
+
+const authConfig = {
   providers: [
+    Cognito(cognitoClientOptions),
     Cognito({
-      clientId: process.env.AUTH_COGNITO_ID!,
-      issuer: process.env.AUTH_COGNITO_ISSUER!,
-      checks: ["pkce", "state"],
-      client: {
-        token_endpoint_auth_method: "none"
-      },
+      ...cognitoClientOptions,
+      id: "cognito-signup",
       authorization: {
-        params: {
-          scope: "openid profile email",
-          response_type: "code",
-        },
+        ...cognitoClientOptions.authorization,
+        ...(cognitoSignUpAuthorizationUrl
+          ? { url: cognitoSignUpAuthorizationUrl }
+          : {}),
       },
-    })
+    }),
   ],
   callbacks: {
     async jwt({ token, account }) {
-      // Store tokens on first sign in
       if (account) {
         token.accessToken = account.access_token
         token.idToken = account.id_token
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at
-        console.log('Initial token set:', token)
       }
 
-      // Return token if not expired
       if (Date.now() < (token.expiresAt as number) * 1000) {
         return token
       }
 
-      // Token expired — refresh it
       return await refreshAccessToken(token)
     },
     async session({ session, token }) {
@@ -43,26 +57,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.idToken = token.idToken as string
       session.error = token.error as string | undefined
       return session
-    }
+    },
   },
   pages: {
-    signIn: '/login',
-    error: '/auth/error',
-  }
-})
+    signIn: "/login",
+    error: "/auth/error",
+  },
+} satisfies NextAuthConfig
 
-// Token refresh helper
-async function refreshAccessToken(token: any) {
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
+
+async function refreshAccessToken(token: JWT) {
   try {
     const url = `${process.env.AUTH_COGNITO_ISSUER}/oauth2/token`
     const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        grant_type: 'refresh_token',
+        grant_type: "refresh_token",
         client_id: process.env.AUTH_COGNITO_ID!,
-        client_secret: process.env.AUTH_COGNITO_SECRET!,
-        refresh_token: token.refreshToken,
+        refresh_token: token.refreshToken ?? "",
       }),
     })
 
@@ -75,7 +89,7 @@ async function refreshAccessToken(token: any) {
       idToken: refreshed.id_token,
       expiresAt: Math.floor(Date.now() / 1000 + refreshed.expires_in),
     }
-  } catch (error) {
-    return { ...token, error: 'RefreshAccessTokenError' }
+  } catch {
+    return { ...token, error: "RefreshAccessTokenError" }
   }
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { signOut, useSession } from "next-auth/react"
+import { useSession } from "next-auth/react"
 import type { Session } from "next-auth"
 
 export function SessionWatcher() {
@@ -9,7 +9,7 @@ export function SessionWatcher() {
 
   useEffect(() => {
     if (session?.error) {
-      signOut({ callbackUrl: "/login" })
+      window.location.assign("/api/auth/logout")
     }
   }, [session?.error])
 
