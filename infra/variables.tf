@@ -47,3 +47,9 @@ variable "gcp_region" {
   type        = string
   default     = "australia-southeast1"
 }
+
+variable "auth_secret" {
+  description = "AUTH_SECRET used by the frontend (kept constant across applies)"
+  type        = string
+  sensitive   = true
+}

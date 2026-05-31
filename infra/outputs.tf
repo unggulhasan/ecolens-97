@@ -25,5 +25,5 @@ output "api_hello_url" {
 
 output "cognito_issuer" {
   description = "Cognito JWT issuer URL (use as AUTH_COGNITO_ISSUER in frontend)"
-  value       = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+  value       = local.cognito_issuer
 }
