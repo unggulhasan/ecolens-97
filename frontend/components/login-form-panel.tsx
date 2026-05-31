@@ -14,15 +14,15 @@ type LoginFormPanelProps = {
 
 export function LoginFormPanel({ redirectTo = "/dashboard" }: LoginFormPanelProps) {
   return (
-    <div className="flex h-full flex-col justify-center p-8 md:p-10">
-      <CardHeader className="px-0">
-        <CardTitle className="text-2xl text-gray-800">Login</CardTitle>
-        <CardDescription className="text-gray-600">
+    <div className="auth-form-panel">
+      <CardHeader className="auth-form-header">
+        <CardTitle className="auth-form-title">Login</CardTitle>
+        <CardDescription className="auth-form-description">
           Sign in to continue to your dashboard.
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="px-0 pt-6">
+      <CardContent className="auth-form-content">
         <FieldGroup>
           <form
             action={async () => {
@@ -30,7 +30,7 @@ export function LoginFormPanel({ redirectTo = "/dashboard" }: LoginFormPanelProp
               await signIn("cognito", { redirectTo })
             }}
           >
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="auth-button-full">
               Sign in with Cognito
             </Button>
           </form>

@@ -16,15 +16,13 @@ export function AuthWelcomePanel({
   description = "Explore and share Australian wildlife through your lens.",
 }: AuthWelcomePanelProps) {
   return (
-    <div className="flex h-full min-h-48 flex-col justify-center bg-gradient-to-br from-brand-from via-brand-via to-brand-to p-8 text-white md:min-h-0 md:p-10">
-      <CardHeader className="gap-4 px-0">
-        <CardDescription className="text-xs font-medium tracking-wide text-gray-300 uppercase">
+    <div className="auth-welcome-panel">
+      <CardHeader className="auth-welcome-header">
+        <CardDescription className="auth-welcome-eyebrow">
           {eyebrow}
         </CardDescription>
-        <CardTitle className="text-3xl font-semibold text-white">
-          {title}
-        </CardTitle>
-        <CardDescription className="text-base text-gray-300 normal-case tracking-normal">
+        <CardTitle className="auth-welcome-title">{title}</CardTitle>
+        <CardDescription className="auth-welcome-description">
           {description}
         </CardDescription>
       </CardHeader>

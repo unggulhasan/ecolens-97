@@ -9,11 +9,14 @@ type AuthSplitCardProps = {
 
 export function AuthSplitCard({ redirectTo }: AuthSplitCardProps) {
   return (
-    <Card className="w-full max-w-4xl gap-0 overflow-hidden bg-white p-0 text-gray-800 shadow-lg dark:bg-white dark:text-gray-800 md:aspect-[5/3]">
-      <div className="flex min-h-112 flex-1 flex-col md:grid md:h-full md:min-h-0 md:grid-cols-[1fr_1px_1fr]">
+    <Card className="auth-card">
+      <div className="auth-card-grid">
         <AuthWelcomePanel />
-        <Separator orientation="vertical" className="hidden bg-gray-200 md:block" />
-        <Separator className="md:hidden" />
+        <Separator
+          orientation="vertical"
+          className="auth-separator auth-separator-vertical"
+        />
+        <Separator className="auth-separator auth-separator-horizontal" />
         <LoginFormPanel redirectTo={redirectTo} />
       </div>
     </Card>

@@ -86,6 +86,13 @@
     --sidebar-accent-foreground: oklch(0.214 0.009 43.1);
     --sidebar-border: oklch(0.922 0.005 34.3);
     --sidebar-ring: oklch(0.714 0.014 41.2);
+    --auth-page-bg: oklch(0.985 0.002 67.8);
+    --auth-card-bg: oklch(1 0 0);
+    --auth-card-fg: oklch(0.278 0.018 43.1);
+    --auth-card-muted: oklch(0.446 0.021 43.1);
+    --auth-welcome-fg: oklch(1 0 0);
+    --auth-welcome-muted: oklch(0.85 0.02 155);
+    --auth-separator: oklch(0.928 0.005 34.3);
 }
 
 .dark {
@@ -132,4 +139,85 @@
   html {
     @apply font-sans;
     }
+}
+
+@layer components {
+  .auth-page {
+    @apply flex min-h-svh items-center justify-center p-6;
+    background-color: var(--auth-page-bg);
+  }
+
+  .auth-card {
+    @apply flex w-full max-w-4xl flex-col overflow-hidden shadow-lg md:aspect-[5/3];
+    gap: 0 !important;
+    padding: 0 !important;
+    background-color: var(--auth-card-bg) !important;
+    color: var(--auth-card-fg) !important;
+  }
+
+  .auth-card-grid {
+    @apply flex min-h-112 flex-1 flex-col md:grid md:h-full md:min-h-0 md:grid-cols-[1fr_1px_1fr];
+  }
+
+  .auth-separator {
+    background-color: var(--auth-separator);
+  }
+
+  .auth-separator-vertical {
+    @apply hidden md:block;
+  }
+
+  .auth-separator-horizontal {
+    @apply md:hidden;
+  }
+
+  .auth-welcome-panel {
+    @apply flex h-full min-h-0 flex-col justify-center bg-gradient-to-br from-brand-from via-brand-via to-brand-to p-8 md:p-10;
+    color: var(--auth-welcome-fg);
+  }
+
+  .auth-welcome-header {
+    @apply gap-4 px-0;
+  }
+
+  .auth-welcome-eyebrow {
+    @apply text-xs font-medium tracking-wide uppercase;
+    color: var(--auth-welcome-muted) !important;
+  }
+
+  .auth-welcome-title {
+    @apply text-3xl font-semibold;
+    color: var(--auth-welcome-fg) !important;
+  }
+
+  .auth-welcome-description {
+    @apply text-base normal-case tracking-normal;
+    color: var(--auth-welcome-muted) !important;
+  }
+
+  .auth-form-panel {
+    @apply flex h-full min-h-0 flex-col justify-center p-8 md:p-10;
+    background-color: var(--auth-card-bg);
+  }
+
+  .auth-form-header {
+    @apply px-0;
+  }
+
+  .auth-form-title {
+    @apply text-2xl;
+    color: var(--auth-card-fg) !important;
+  }
+
+  .auth-form-description {
+    color: var(--auth-card-muted) !important;
+  }
+
+  .auth-form-content {
+    @apply px-0 pt-6;
+  }
+
+  .auth-button-full {
+    @apply w-full;
+  }
 }
