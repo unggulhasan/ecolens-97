@@ -18,11 +18,6 @@ output "api_gateway_endpoint" {
   value       = aws_apigatewayv2_api.main.api_endpoint
 }
 
-output "api_hello_url" {
-  description = "Full URL for the GET /hello route"
-  value       = "${aws_apigatewayv2_api.main.api_endpoint}/hello"
-}
-
 output "cognito_issuer" {
   description = "Cognito JWT issuer URL (use as AUTH_COGNITO_ISSUER in frontend)"
   value       = local.cognito_issuer

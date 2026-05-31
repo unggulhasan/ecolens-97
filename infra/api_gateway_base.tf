@@ -75,8 +75,8 @@ resource "aws_apigatewayv2_stage" "default" {
 
 locals {
   api_lambda_functions = {
-    hello = aws_lambda_function.hello
-    # add your new lambda here
+    hello   = aws_lambda_function.hello
+    presign = aws_lambda_function.presign
   }
 }
 
