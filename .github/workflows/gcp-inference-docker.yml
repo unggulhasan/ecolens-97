@@ -1,0 +1,29 @@
+name: Build and Push GCP Inference Image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{secrets.ECOLENS_DOCKERHUB_USERNAME}}
+          password: ${{ secrets.ECOLENS_DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./functions/gcp_inference
+          push: true
+          tags: |
+            ${{ secrets.ECOLENS_DOCKERHUB_USERNAME }}/ecolens-inference:${{ github.sha }}
+            ${{ secrets.ECOLENS_DOCKERHUB_USERNAME }}/ecolens-inference:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
