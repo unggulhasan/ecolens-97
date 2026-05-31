@@ -69,11 +69,13 @@ resource "aws_cognito_user_pool_client" "main" {
   supported_identity_providers  = ["COGNITO"]
 
   callback_urls = [
-    "http://localhost:3000/api/auth/callback/cognito"
+    "http://localhost:3000/api/auth/callback/cognito",
+    "http://localhost:3000/api/auth/callback/cognito-signup",
   ]
 
   logout_urls = [
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://localhost:3000/login",
   ]
 
   explicit_auth_flows = [
