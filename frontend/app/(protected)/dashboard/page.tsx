@@ -1,15 +1,12 @@
 import { auth } from "@/auth"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { fetchHello } from "@/lib/api"
-import Link from "next/link"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -73,11 +70,6 @@ export default async function DashboardPage() {
             </Card>
           </div>
         </CardContent>
-        <CardFooter>
-          <Button variant="outline" asChild>
-            <Link href="/">Back to Home</Link>
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   )
