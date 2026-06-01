@@ -528,3 +528,68 @@
   .user-dropdown-logout-btn:hover {
     background-color: color-mix(in oklch, var(--destructive) 10%, transparent) !important;
   }
+
+  /* Upload Page Styles */
+  .upload-dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
+  }
+
+  .upload-dropzone.cursor-pointer {
+    cursor: pointer;
+  }
+
+  .upload-dropzone.cursor-pointer:hover {
+    background-color: color-mix(in oklch, var(--accent) 50%, transparent);
+  }
+
+  .upload-dropzone.drag-active {
+    border-color: var(--primary);
+    background-color: color-mix(in oklch, var(--primary) 5%, transparent);
+  }
+
+  .upload-dropzone.disabled {
+    border-color: var(--border);
+    background-color: color-mix(in oklch, var(--muted) 40%, transparent);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .upload-icon-wrapper {
+    background-color: color-mix(in oklch, var(--primary) 10%, transparent);
+    padding: 1rem;
+    border-radius: 9999px;
+    color: var(--primary);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-error {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--destructive);
+    background-color: color-mix(in oklch, var(--destructive) 10%, transparent);
+    padding: 0.75rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid color-mix(in oklch, var(--destructive) 20%, transparent);
+  }
+
+  .selected-file-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background-color: var(--card);
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.875rem;
+  }
