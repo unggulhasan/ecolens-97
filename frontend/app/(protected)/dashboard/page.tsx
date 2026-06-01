@@ -25,52 +25,56 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>Dashboard</CardTitle>
-          <CardDescription>Your account overview and quick actions.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle>API /hello</CardTitle>
-              <CardDescription>
-                Authenticated response from API Gateway
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm">
-              {helloMessage ? (
-                <p className="font-mono text-foreground">{helloMessage}</p>
-              ) : (
-                <p className="text-destructive">
-                  {helloError ?? "No response yet."}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-          <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-3">
-            <Card size="sm">
+    <div className="page-container">
+      <div className="page-content-wrapper">
+        <div className="page-header">
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-description">Your account overview and quick actions.</p>
+        </div>
+
+        <div className="dashboard-grid">
+          <div className="dashboard-main-content">
+            <Card>
               <CardHeader>
-                <CardTitle>Total Scans</CardTitle>
+                <CardTitle>API /hello</CardTitle>
+                <CardDescription>
+                  Authenticated response from API Gateway
+                </CardDescription>
               </CardHeader>
-              <CardContent>124</CardContent>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardTitle>Saved Reports</CardTitle>
-              </CardHeader>
-              <CardContent>18</CardContent>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardTitle>Alerts</CardTitle>
-              </CardHeader>
-              <CardContent>3 active</CardContent>
+              <CardContent>
+                {helloMessage ? (
+                  <p className="font-mono text-sm bg-muted/30 p-4 rounded-lg border">{helloMessage}</p>
+                ) : (
+                  <p className="text-sm text-destructive">
+                    {helloError ?? "No response yet."}
+                  </p>
+                )}
+              </CardContent>
             </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="dashboard-stats-sidebar">
+            <Card size="sm">
+              <CardHeader>
+                <CardDescription>Total Scans</CardDescription>
+                <CardTitle className="text-3xl font-bold">124</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card size="sm">
+              <CardHeader>
+                <CardDescription>Saved Reports</CardDescription>
+                <CardTitle className="text-3xl font-bold">18</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card size="sm">
+              <CardHeader>
+                <CardDescription>Alerts</CardDescription>
+                <CardTitle className="text-3xl font-bold text-destructive">3 active</CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

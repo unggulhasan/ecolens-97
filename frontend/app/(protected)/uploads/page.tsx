@@ -80,11 +80,11 @@ export default function UploadsPage() {
   }
 
   return (
-    <div className="flex-1 p-6 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Uploads</h1>
-          <p className="text-muted-foreground">Upload and manage your ecological data files.</p>
+    <div className="page-container">
+      <div className="page-content-wrapper">
+        <div className="page-header">
+          <h1 className="page-title">Uploads</h1>
+          <p className="page-description">Upload and manage your ecological data files.</p>
         </div>
 
         <Card>
