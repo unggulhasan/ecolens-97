@@ -47,22 +47,6 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   }
 }
 
-resource "aws_apigatewayv2_integration" "hello" {
-  api_id                 = aws_apigatewayv2_api.main.id
-  integration_type       = "AWS_PROXY"
-  integration_method     = "POST"
-  integration_uri        = aws_lambda_function.hello.invoke_arn
-  payload_format_version = "2.0"
-}
-
-resource "aws_apigatewayv2_route" "hello" {
-  api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "GET /hello"
-  target             = "integrations/${aws_apigatewayv2_integration.hello.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.main.id
   name        = "$default"
@@ -89,10 +73,19 @@ resource "aws_apigatewayv2_stage" "default" {
   tags = local.common_tags
 }
 
+locals {
+  api_lambda_functions = {
+    hello = aws_lambda_function.hello
+    # add your new lambda here
+  }
+}
+
 resource "aws_lambda_permission" "api" {
+  for_each = local.api_lambda_functions
+
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.hello.function_name
+  function_name = each.value.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
 }
