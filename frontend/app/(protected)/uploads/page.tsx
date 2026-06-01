@@ -67,6 +67,10 @@ export default function UploadsPage() {
   const removeFile = () => {
     setSelectedFile(null)
     setError(null)
+    const fileInput = document.getElementById("file-upload") as HTMLInputElement
+    if (fileInput) {
+      fileInput.value = ""
+    }
   }
 
   const formatSize = (bytes: number) => {
