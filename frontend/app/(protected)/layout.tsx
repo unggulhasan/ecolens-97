@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { signOutWithCognito } from "@/auth-actions"
-import { LogoutButton } from "@/components/logout-button"
+import { UserDropdown } from "@/components/user-dropdown"
 
 export default async function ProtectedLayout({
   children,
@@ -13,11 +13,14 @@ export default async function ProtectedLayout({
     await signOutWithCognito()
   }
 
+  const user = session?.user || {}
+
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="flex justify-end border-b px-4 py-3">
-        <LogoutButton />
-      </header>
+      <nav className="top-nav-bar flex items-center justify-between w-full">
+        <span className="top-nav-logo">Aussie Ecolens</span>
+        <UserDropdown user={user} />
+      </nav>
       <main className="flex flex-1 flex-col">{children}</main>
     </div>
   )
