@@ -6,11 +6,11 @@ export const proxy = auth((req) => {
   const isLoggedIn = !!req.auth
   const hasError = isLoggedIn && !!(req.auth as { error?: string }).error
 
-  if (pathname === "/login" && isLoggedIn && !hasError && req.method !== "POST") {
+  if ((pathname === "/login" || pathname === "/signup") && isLoggedIn && !hasError && req.method !== "POST") {
     return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 
-  if ((!isLoggedIn || hasError) && pathname !== "/login") {
+  if ((!isLoggedIn || hasError) && pathname !== "/login" && pathname !== "/signup") {
     return NextResponse.redirect(new URL("/login", req.url))
   }
 
@@ -18,5 +18,5 @@ export const proxy = auth((req) => {
 })
 
 export const config = {
-  matcher: ["/", "/login", "/dashboard/:path*"],
+  matcher: ["/", "/login", "/signup", "/dashboard/:path*"],
 }
