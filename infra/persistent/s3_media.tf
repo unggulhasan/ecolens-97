@@ -1,5 +1,9 @@
+resource "random_id" "s3_suffix" {
+  byte_length = 4
+}
+
 resource "aws_s3_bucket" "s3_media" {
-  bucket        = var.media_bucket_name
+  bucket        = "${var.media_bucket_name}-${random_id.s3_suffix.hex}"
   force_destroy = true
 
   tags = local.common_tags
