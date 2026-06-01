@@ -2,3 +2,11 @@ fastapi
 uvicorn[standard]
 requests
 pydantic
+google-cloud-storage
+megadetector
+onnx2torch
+tqdm
+pillow
+numpy
+torch
+torchvision
