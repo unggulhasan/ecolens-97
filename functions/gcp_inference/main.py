@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from schemas import InferenceRequest, InferenceResponse
-
+from download_service import download_file_from_url, cleanup_file
+from inference_service import perform_inference
 
 app = FastAPI()
 
@@ -18,7 +19,7 @@ def infer(request: InferenceRequest):
         return InferenceResponse(
             status="success",
             filename=local_file_path,
-            tags=result
+            tags=results
         )
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error))
