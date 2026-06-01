@@ -64,9 +64,9 @@ export function SignupFormPanel() {
               />
             </svg>
           </div>
-          <CardHeader className="px-0 pb-2">
-            <CardTitle className="text-xl">Check your email</CardTitle>
-            <CardDescription className="max-w-xs mx-auto text-sm text-muted-foreground">
+          <CardHeader className="auth-success-header">
+            <CardTitle className="auth-success-title">Check your email</CardTitle>
+            <CardDescription className="auth-success-description">
               We have sent a temporary password to <strong className="text-foreground">{email}</strong>. Please check your inbox to sign in.
             </CardDescription>
           </CardHeader>

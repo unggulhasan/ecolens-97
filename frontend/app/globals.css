@@ -281,6 +281,9 @@
     gap: 1rem;
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
+    width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
   }
 
   .auth-success-icon-wrapper {
@@ -324,4 +327,30 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .auth-success-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 0.5rem !important;
+    width: 100%;
+  }
+
+  .auth-success-title {
+    font-size: 1.25rem !important;
+    text-align: center !important;
+    width: 100%;
+  }
+
+  .auth-success-description {
+    max-width: 20rem !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    font-size: 0.875rem !important;
+    text-align: center !important;
+    color: var(--auth-card-muted) !important;
   }
