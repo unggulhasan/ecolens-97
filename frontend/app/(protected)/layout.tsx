@@ -1,4 +1,5 @@
-import { auth, signOut } from "@/auth"
+import { auth } from "@/auth"
+import { signOutWithCognito } from "@/auth-actions"
 import { LogoutButton } from "@/components/logout-button"
 
 export default async function ProtectedLayout({
@@ -9,7 +10,7 @@ export default async function ProtectedLayout({
   const session = await auth()
 
   if (session?.error) {
-    await signOut({ redirectTo: "/login" })
+    await signOutWithCognito()
   }
 
   return (

@@ -6,8 +6,8 @@ export const proxy = auth((req) => {
   const isLoggedIn = !!req.auth
   const hasError = isLoggedIn && !!(req.auth as { error?: string }).error
 
-  if (pathname === "/login" && isLoggedIn && !hasError) {
-    return NextResponse.redirect(new URL("/", req.url))
+  if (pathname === "/login" && isLoggedIn && !hasError && req.method !== "POST") {
+    return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 
   if ((!isLoggedIn || hasError) && pathname !== "/login") {
