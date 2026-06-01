@@ -28,7 +28,12 @@ output "cognito_issuer" {
   value       = local.cognito_issuer
 }
 
-output "app_ecr_repository_url" {
-  description = "ECR repository URL for the thumbnail Lambda container image"
-  value       = aws_ecr_repository.app.repository_url
+output "ecr_docker_registry" {
+  description = "ECR Docker registry URL"
+  value       = local.docker_registry
+}
+
+output "base_image_uri" {
+  description = "ECR URI for the base Lambda image (opencv + numpy)"
+  value       = "${local.docker_registry}/${aws_ecr_repository.registry.name}:latest"
 }

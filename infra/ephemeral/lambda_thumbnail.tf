@@ -6,9 +6,7 @@ resource "aws_lambda_function" "thumbnail" {
   timeout          = 30
   memory_size      = 1024
   source_code_hash = sha256(join(",", [
-    filesha256("${path.root}/../../functions/thumbnail/lambda_function.py"),
-    filesha256("${path.root}/../../functions/thumbnail/requirements.txt"),
-    filesha256("${path.root}/../../functions/thumbnail/Dockerfile"),
+    filesha256("${path.root}/../../functions/thumbnail/lambda_function.py")
   ]))
 
   depends_on = [null_resource.thumbnail_docker_build_push]

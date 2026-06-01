@@ -1,11 +1,6 @@
-FROM public.ecr.aws/lambda/python:3.11 AS builder
+ARG BASE_IMAGE_URI=invalid
+FROM ${BASE_IMAGE_URI}
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt --target /install
-
-FROM public.ecr.aws/lambda/python:3.11
-
-COPY --from=builder /install ${LAMBDA_TASK_ROOT}
 COPY lambda_function.py ${LAMBDA_TASK_ROOT}
 
 CMD ["lambda_function.handler"]

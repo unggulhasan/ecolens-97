@@ -1,14 +1,14 @@
 data "aws_caller_identity" "current" {}
 
-resource "aws_ecr_repository" "app" {
-  name         = "${var.app_name}-ecr"
+resource "aws_ecr_repository" "registry" {
+  name         = "base-opencv-numpy"
   force_delete = true
 
   tags = local.common_tags
 }
 
-resource "aws_ecr_repository_policy" "app" {
-  repository = aws_ecr_repository.app.name
+resource "aws_ecr_repository_policy" "registry" {
+  repository = aws_ecr_repository.registry.name
 
   policy = jsonencode({
     Version = "2012-10-17"
