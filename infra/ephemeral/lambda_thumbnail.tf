@@ -1,19 +1,17 @@
-data "archive_file" "lambda_thumbnail" {
-  type        = "zip"
-  source_dir  = "${path.root}/../../functions/thumbnail"
-  output_path = "${path.root}/build/lambda_thumbnail.zip"
-}
-
 resource "aws_lambda_function" "thumbnail" {
-  function_name = "${var.app_name}-${var.environment}-thumbnail"
-  role          = aws_iam_role.thumbnail_exec.arn
-  handler       = "lambda_function.handler"
-  runtime       = "python3.11"
-  timeout       = 30
-  memory_size   = 1024
+  function_name    = "${var.app_name}-${var.environment}-thumbnail"
+  role             = aws_iam_role.thumbnail_exec.arn
+  package_type     = "Image"
+  image_uri        = local.thumbnail_image_uri
+  timeout          = 30
+  memory_size      = 1024
+  source_code_hash = sha256(join(",", [
+    filesha256("${path.root}/../../functions/thumbnail/lambda_function.py"),
+    filesha256("${path.root}/../../functions/thumbnail/requirements.txt"),
+    filesha256("${path.root}/../../functions/thumbnail/Dockerfile"),
+  ]))
 
-  filename         = data.archive_file.lambda_thumbnail.output_path
-  source_code_hash = data.archive_file.lambda_thumbnail.output_base64sha256
+  depends_on = [null_resource.thumbnail_docker_build_push]
 
   environment {
     variables = {
@@ -36,4 +34,9 @@ resource "aws_iam_role" "thumbnail_exec" {
 resource "aws_iam_role_policy_attachment" "thumbnail_exec_attachment" {
   role       = aws_iam_role.thumbnail_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "thumbnail_ecr_attachment" {
+  role       = aws_iam_role.thumbnail_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
