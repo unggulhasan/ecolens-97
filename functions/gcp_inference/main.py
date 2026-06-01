@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from schemas import InferenceRequest, InferenceResponse
+
 
 app = FastAPI()
 
@@ -6,10 +8,20 @@ app = FastAPI()
 def health_check():
     return {"status": "ok"}
 
-@app.post("/infer")
-def infer(payload: dict):
-    return {
-        "tags": {
-            "koala": 1
-        }
-    }
+@app.post("/infer", response_model=InferenceResponse)
+def infer(request: InferenceRequest):
+    local_file_path = None
+    try:
+        local_file_path = download_file_from_url(request.presigned_url)
+        results = perform_inference(local_file_path)
+
+        return InferenceResponse(
+            status="success",
+            filename=local_file_path,
+            tags=result
+        )
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error))
+    finally:
+        if local_file_path:
+            cleanup_file(local_file_path)
