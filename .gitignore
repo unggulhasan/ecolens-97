@@ -7,7 +7,7 @@
 .cursor/
 
 # Terraform
-infra/build/
+**/build/
 **/.terraform/*
 *.tfstate
 *.tfstate.*

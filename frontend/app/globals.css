@@ -241,8 +241,9 @@
     background-color: var(--auth-outline-hover-bg) !important;
     color: var(--auth-outline-hover-fg) !important;
   }
+}
 
-  .auth-slider-container {
+.auth-slider-container {
     position: relative;
     overflow: hidden;
     height: 100%;
@@ -324,4 +325,3 @@
     flex-direction: column;
     gap: 1rem;
   }
-}
