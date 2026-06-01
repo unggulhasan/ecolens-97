@@ -27,3 +27,8 @@ output "cognito_issuer" {
   description = "Cognito JWT issuer URL"
   value       = local.cognito_issuer
 }
+
+output "app_ecr_repository_url" {
+  description = "ECR repository URL for the thumbnail Lambda container image"
+  value       = aws_ecr_repository.app.repository_url
+}

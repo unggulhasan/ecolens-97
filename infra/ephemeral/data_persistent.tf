@@ -4,3 +4,5 @@ data "terraform_remote_state" "persistent" {
     path = "${path.module}/../persistent/terraform.tfstate"
   }
 }
+
+data "aws_caller_identity" "current" {}
