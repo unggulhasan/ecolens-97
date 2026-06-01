@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from schemas import InferenceRequest, InferenceResponse
 from download_service import download_file_from_url, cleanup_file
 from inference_service import perform_inference
+from model_loader import download_models
 
 app = FastAPI()
 
@@ -26,3 +27,15 @@ def infer(request: InferenceRequest):
     finally:
         if local_file_path:
             cleanup_file(local_file_path)
+
+
+
+# test endpoint to trigger model download
+@app.get("/test-model-download")
+def test_model_download():
+
+    download_models()
+
+    return {
+        "status": "success"
+    }
