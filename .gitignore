@@ -20,3 +20,6 @@ override.tf.json
 *.tfvars
 *.tfvars.json
 .terraform.lock.hcl
+
+# ML models
+ml_models/*.pt
