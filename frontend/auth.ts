@@ -44,6 +44,7 @@ const authConfig = {
         token.idToken = account.id_token
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at
+        console.log("Initial token:", token)
       }
 
       if (Date.now() < (token.expiresAt as number) * 1000) {
