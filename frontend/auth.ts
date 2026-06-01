@@ -38,12 +38,19 @@ const authConfig = {
     }),
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       if (account) {
         token.accessToken = account.access_token
         token.idToken = account.id_token
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at
+        console.log("Initial token:", token)
+        
+        if (profile) {
+          const givenName = (profile as any).given_name || ""
+          const familyName = (profile as any).family_name || ""
+          token.name = (profile as any).name || `${givenName} ${familyName}`.trim() || (profile as any).email || null
+        }
         console.log("Initial token:", token)
       }
 
@@ -57,6 +64,10 @@ const authConfig = {
       session.accessToken = token.accessToken as string
       session.idToken = token.idToken as string
       session.error = token.error as string | undefined
+      if (session.user) {
+        session.user.name = token.name as string
+        session.user.email = token.email as string
+      }
       return session
     },
   },
