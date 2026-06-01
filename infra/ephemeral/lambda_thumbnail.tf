@@ -1,7 +1,7 @@
 data "archive_file" "lambda_thumbnail" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/thumbnail"
-  output_path = "${path.module}/build/lambda_thumbnail.zip"
+  source_dir  = "${path.root}/../../functions/thumbnail"
+  output_path = "${path.root}/build/lambda_thumbnail.zip"
 }
 
 resource "aws_lambda_function" "thumbnail" {
@@ -17,7 +17,7 @@ resource "aws_lambda_function" "thumbnail" {
 
   environment {
     variables = {
-      MEDIA_BUCKET_NAME = var.media_bucket_name
+      MEDIA_BUCKET_NAME = data.terraform_remote_state.persistent.outputs.media_bucket_name
       REGION_NAME       = var.aws_region
     }
   }
@@ -37,4 +37,3 @@ resource "aws_iam_role_policy_attachment" "thumbnail_exec_attachment" {
   role       = aws_iam_role.thumbnail_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
-

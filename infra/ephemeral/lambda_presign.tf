@@ -1,7 +1,7 @@
 data "archive_file" "lambda_presign" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/presign"
-  output_path = "${path.module}/build/lambda_presign.zip"
+  source_dir  = "${path.root}/../../functions/presign"
+  output_path = "${path.root}/build/lambda_presign.zip"
 }
 
 resource "aws_lambda_function" "presign" {
@@ -15,7 +15,7 @@ resource "aws_lambda_function" "presign" {
 
   environment {
     variables = {
-      MEDIA_BUCKET_NAME = var.media_bucket_name
+      MEDIA_BUCKET_NAME = data.terraform_remote_state.persistent.outputs.media_bucket_name
       REGION_NAME       = var.aws_region
     }
   }

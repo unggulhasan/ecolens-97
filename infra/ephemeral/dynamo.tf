@@ -37,8 +37,8 @@ resource "aws_iam_policy" "dynamodb_access" {
 # ------------------------------ QUERY TEST LAMBDA ------------------------------
 data "archive_file" "lambda_query_test" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_test"
-  output_path = "${path.module}/build/lambda_query_test.zip"
+  source_dir  = "${path.root}/../../functions/query_test"
+  output_path = "${path.root}/build/lambda_query_test.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_test" {
@@ -70,8 +70,8 @@ resource "aws_lambda_function" "query_test" {
 # ------------------------------ QUERY 1 ---------------------------------------
 data "archive_file" "lambda_query_1" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_1"
-  output_path = "${path.module}/build/lambda_query_1.zip"
+  source_dir  = "${path.root}/../../functions/query_1"
+  output_path = "${path.root}/build/lambda_query_1.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_1" {
@@ -133,14 +133,14 @@ resource "aws_lambda_permission" "query_1" {
   function_name = aws_lambda_function.query_1.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
-}                 
+}
 
 
 # ------------------------------ QUERY 2 ---------------------------------------
 data "archive_file" "lambda_query_2" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_2"
-  output_path = "${path.module}/build/lambda_query_2.zip"
+  source_dir  = "${path.root}/../../functions/query_2"
+  output_path = "${path.root}/build/lambda_query_2.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_2" {
@@ -208,8 +208,8 @@ resource "aws_lambda_permission" "query_2" {
 # ------------------------------ QUERY 3 ---------------------------------------
 data "archive_file" "lambda_query_3" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_3"
-  output_path = "${path.module}/build/lambda_query_3.zip"
+  source_dir  = "${path.root}/../../functions/query_3"
+  output_path = "${path.root}/build/lambda_query_3.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_3" {
@@ -276,8 +276,8 @@ resource "aws_lambda_permission" "query_3" {
 # ------------------------------ QUERY 4 ---------------------------------------
 data "archive_file" "lambda_query_4" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_4"
-  output_path = "${path.module}/build/lambda_query_4.zip"
+  source_dir  = "${path.root}/../../functions/query_4"
+  output_path = "${path.root}/build/lambda_query_4.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_4" {
@@ -344,8 +344,8 @@ resource "aws_lambda_permission" "query_4" {
 # ------------------------------ QUERY 5 ---------------------------------------
 data "archive_file" "lambda_query_5" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_5"
-  output_path = "${path.module}/build/lambda_query_5.zip"
+  source_dir  = "${path.root}/../../functions/query_5"
+  output_path = "${path.root}/build/lambda_query_5.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_5" {
@@ -413,8 +413,8 @@ resource "aws_lambda_permission" "query_5" {
 # ------------------------------ QUERY 6 ---------------------------------------
 data "archive_file" "lambda_query_6" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_6"
-  output_path = "${path.module}/build/lambda_query_6.zip"
+  source_dir  = "${path.root}/../../functions/query_6"
+  output_path = "${path.root}/build/lambda_query_6.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_6" {
@@ -477,6 +477,3 @@ resource "aws_lambda_permission" "query_6" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
 }
-
-
-

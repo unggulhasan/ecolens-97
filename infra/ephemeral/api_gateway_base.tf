@@ -12,8 +12,8 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   name             = "${var.app_name}-cognito-authorizer"
 
   jwt_configuration {
-    audience = [aws_cognito_user_pool_client.main.id]
-    issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+    audience = [data.terraform_remote_state.persistent.outputs.cognito_client_id]
+    issuer   = data.terraform_remote_state.persistent.outputs.cognito_issuer
   }
 }
 
@@ -41,13 +41,6 @@ resource "aws_apigatewayv2_stage" "default" {
   }
 
   tags = local.common_tags
-}
-
-locals {
-  api_lambda_functions = {
-    hello   = aws_lambda_function.hello
-    presign = aws_lambda_function.presign
-  }
 }
 
 resource "aws_lambda_permission" "api" {
