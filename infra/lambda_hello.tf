@@ -6,7 +6,7 @@ data "archive_file" "lambda_hello" {
 
 resource "aws_lambda_function" "hello" {
   function_name = "${var.app_name}-${var.environment}-hello"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_role_hello.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -14,4 +14,17 @@ resource "aws_lambda_function" "hello" {
   source_code_hash = data.archive_file.lambda_hello.output_base64sha256
 
   tags = local.common_tags
+}
+
+resource "aws_iam_role" "lambda_exec_role_hello" {
+  name = "${var.app_name}-${var.environment}-hello"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_logs_hello" {
+  role       = aws_iam_role.lambda_exec_role_hello.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }

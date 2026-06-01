@@ -6,7 +6,7 @@ data "archive_file" "lambda_presign" {
 
 resource "aws_lambda_function" "presign" {
   function_name = "${var.app_name}-${var.environment}-presign"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_role_presign.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -16,31 +16,35 @@ resource "aws_lambda_function" "presign" {
   environment {
     variables = {
       MEDIA_BUCKET_NAME = var.media_bucket_name
-      REGION_NAME = var.aws_region
+      REGION_NAME       = var.aws_region
     }
   }
 
   tags = local.common_tags
 }
 
-data "aws_iam_policy_document" "presign_s3" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "s3:PutObject",
-    ]
-    resources = ["${aws_s3_bucket.s3_media.arn}/*"]
-  }
+resource "aws_iam_role" "lambda_exec_role_presign" {
+  name = "${var.app_name}-${var.environment}-presign"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_logs_presign" {
+  role       = aws_iam_role.lambda_exec_role_presign.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_iam_policy" "presign_s3" {
-  name   = "${var.app_name}-${var.environment}-presign-s3"
-  policy = data.aws_iam_policy_document.presign_s3.json
+  name = "${var.app_name}-${var.environment}-presign-s3"
+
+  policy = local.presign_s3_policy_json
 
   tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "presign_s3" {
-  role       = aws_iam_role.lambda_exec.name
+  role       = aws_iam_role.lambda_exec_role_presign.name
   policy_arn = aws_iam_policy.presign_s3.arn
 }

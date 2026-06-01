@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "s3_media" {
-  bucket = var.media_bucket_name
+  bucket        = var.media_bucket_name
   force_destroy = true
 
   tags = local.common_tags
@@ -33,4 +33,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "s3_media" {
       noncurrent_days = 30
     }
   }
+}
+
+resource "aws_s3_bucket_notification" "s3_media_notification" {
+  bucket      = aws_s3_bucket.s3_media.id
+  eventbridge = true
 }
