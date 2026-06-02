@@ -6,7 +6,13 @@ resource "google_cloud_run_v2_service" "inference" {
   template {
 
     service_account = google_service_account.inference_runtime.email
+    max_instance_request_concurrency = 1
   
+    scaling {
+      min_instance_count = 1
+      max_instance_count = 3
+    }
+
     containers {
       image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/ecolens-repo/ecolens-inference:latest"
       ports {
