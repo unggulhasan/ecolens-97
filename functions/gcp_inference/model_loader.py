@@ -1,61 +1,90 @@
 from google.cloud import storage
 import os
+import uuid
 
-# directqory to download the model files from GCS to the local file system of the Cloud Run container.
+# Directory to download the model files from GCS to the local file system of the Cloud Run container.
 MODEL_DIR = "/tmp/models"
 
-# being read from env variables, with a default values.
+# Unique ID created when this Cloud Run container instance starts.
+# If this value changes between requests, then your requests are hitting different container instances.
+INSTANCE_ID = str(uuid.uuid4())
+
+# Being read from environment variables, with default values.
 MODEL_BUCKET_NAME = os.getenv("MODEL_BUCKET_NAME", "aussie-ecolens-gcp-models")
 MEGADETECTOR_MODEL_FILE = os.getenv("MEGADETECTOR_MODEL_FILE", "mdv5a.pt")
 SPECIES_MODEL_FILE = os.getenv("SPECIES_MODEL_FILE", "model.pt")
 LABELS_FILE = os.getenv("LABELS_FILE", "labels.txt")
 
 
-def download_blob_if_missing(bucket, file_name: str) -> str:
+def download_blob_if_missing(bucket, file_name: str) -> dict:
     """
     Downloads a single file from GCS into /tmp/models if it does not already exist.
-    Returns the local file path.
+    Returns details showing whether the file was downloaded or skipped.
     """
 
     destination = os.path.join(MODEL_DIR, file_name)
 
-    # If the file already exists in the Cloud Run container,
+    # If the file already exists in this Cloud Run container,
     # avoid downloading it again.
     if os.path.exists(destination):
         print(f"{file_name} already exists. Skipping download.")
-        return destination
 
-    # a blob is the GCS object representing the file in the bucket.
+        return {
+            "file": file_name,
+            "status": "skipped",
+            "reason": "already_exists",
+            "local_path": destination,
+            "size_bytes": os.path.getsize(destination)
+        }
+
+    # A blob is the GCS object representing the file in the bucket.
     blob = bucket.blob(file_name)
 
-    # blob.download_to_filename(destination) is how its being downloaded.
+    # blob.download_to_filename(destination) downloads the object from GCS.
     print(f"Downloading {file_name} from bucket {MODEL_BUCKET_NAME}...")
     blob.download_to_filename(destination)
     print(f"Downloaded {file_name} to {destination}")
 
-    return destination
+    return {
+        "file": file_name,
+        "status": "downloaded",
+        "local_path": destination,
+        "size_bytes": os.path.getsize(destination)
+    }
 
 
-# downloads the model files from GCP models bucket to the local file system of the Cloud Run container.
-def download_models() -> dict[str, str]:
+def download_models() -> dict:
     """
-    Downloads the model files from GCP models bucket to the local file system of the Cloud Run container.
+    Downloads the model files from GCP models bucket to the local file system
+    of the Cloud Run container.
+
     Returns:
-    A dictionary containing the local file paths of the downloaded model files.
+    A dictionary showing the Cloud Run instance ID and whether each model file
+    was downloaded or skipped.
     """
+
     os.makedirs(MODEL_DIR, exist_ok=True)
 
-    # creates the client that can access GCS. 
+    # Creates the client that can access GCS.
     # In Cloud Run, the client will automatically use the service account's credentials.
     client = storage.Client()
     bucket = client.bucket(MODEL_BUCKET_NAME)
 
-    megadetector_path = download_blob_if_missing(bucket, MEGADETECTOR_MODEL_FILE)
-    species_model_path = download_blob_if_missing(bucket, SPECIES_MODEL_FILE)
-    labels_path = download_blob_if_missing(bucket, LABELS_FILE)
+    files = [
+        MEGADETECTOR_MODEL_FILE,
+        SPECIES_MODEL_FILE,
+        LABELS_FILE
+    ]
+
+    results = []
+
+    for file_name in files:
+        result = download_blob_if_missing(bucket, file_name)
+        results.append(result)
 
     return {
-        "megadetector_model": megadetector_path,
-        "species_model": species_model_path,
-        "labels": labels_path
+        "instance_id": INSTANCE_ID,
+        "model_dir": MODEL_DIR,
+        "bucket": MODEL_BUCKET_NAME,
+        "files": results
     }

@@ -38,8 +38,9 @@ def infer(request: InferenceRequest):
 @app.get("/test-model-download")
 def test_model_download():
 
-    download_models()
+    result = download_models()
 
     return {
-        "status": "success"
+        "status": "success",
+        **result
     }
