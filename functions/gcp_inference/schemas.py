@@ -1,9 +1,9 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
 class InferenceRequest(BaseModel):
-    presigned_url: HttpUrl
+    image_uri: str
 
 class InferenceResponse(BaseModel):
     status: str
-    filename: str
+    image_uri: str
     tags: dict[str, float]
