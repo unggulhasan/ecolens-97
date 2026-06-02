@@ -6,16 +6,10 @@ from decimal import Decimal
 dynamodb = boto3.resource('dynamodb', region_name=os.environ['AWS_REGION_NAME'])
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_NAME'])
 
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return int(obj)
-        return super().default(obj)
-
 def handler(event, context):
     # Input: {"urls": [...], "tags": ["koala", "dingo"], "operation": 1 or 0}
     body = json.loads(event.get('body', '{}'))
-    urls = body.get('urls', [])
+    urls = body.get('file_urls', [])
     tags = body.get('tags', [])
     operation = body.get('operation')
 
@@ -39,7 +33,9 @@ def handler(event, context):
         if operation == 1:
             # Add tags
             for tag in tags:
-                existing_tags[tag] = existing_tags.get(tag, Decimal(0)) + Decimal(1)
+                if tag not in existing_tags:
+                    existing_tags[tag] = Decimal(1)
+
         else:
             # Remove tags — ignore if not present
             for tag in tags:
@@ -55,10 +51,11 @@ def handler(event, context):
         # Return file URL + final tag state
         updated.append({
             'file_url': url,
-            'final_tags': {k: int(v) for k, v in existing_tags.items()}
+            'final_tags': list(existing_tags.keys())
         })
+        
 
     return {
         'statusCode': 200,
-        'body': json.dumps({'updated': updated}, cls=DecimalEncoder)
+        'body': json.dumps({'updated': updated})
     }

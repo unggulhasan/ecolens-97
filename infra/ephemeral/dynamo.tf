@@ -34,22 +34,29 @@ resource "aws_iam_policy" "dynamodb_access" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "dynamodb_access" {
-  role       = aws_iam_role.lambda_exec.name
-  policy_arn = aws_iam_policy.dynamodb_access.arn
-}
-
-
 # ------------------------------ QUERY TEST LAMBDA ------------------------------
 data "archive_file" "lambda_query_test" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_test"
-  output_path = "${path.module}/build/lambda_query_test.zip"
+  source_dir  = "${path.root}/../../functions/query_test"
+  output_path = "${path.root}/build/lambda_query_test.zip"
+}
+
+resource "aws_iam_role" "lambda_exec_query_test" {
+  name = "${var.app_name}-${var.environment}-query-test"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_test_basic" {
+  role       = aws_iam_role.lambda_exec_query_test.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_lambda_function" "query_test" {
   function_name = "${var.app_name}-${var.environment}-query-test"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_query_test.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -63,13 +70,31 @@ resource "aws_lambda_function" "query_test" {
 # ------------------------------ QUERY 1 ---------------------------------------
 data "archive_file" "lambda_query_1" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_1"
-  output_path = "${path.module}/build/lambda_query_1.zip"
+  source_dir  = "${path.root}/../../functions/query_1"
+  output_path = "${path.root}/build/lambda_query_1.zip"
+}
+
+resource "aws_iam_role" "lambda_exec_query_1" {
+  name = "${var.app_name}-${var.environment}-query-1"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_1_basic" {
+  role       = aws_iam_role.lambda_exec_query_1.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_1_dynamodb" {
+  role       = aws_iam_role.lambda_exec_query_1.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
 }
 
 resource "aws_lambda_function" "query_1" {
   function_name = "${var.app_name}-${var.environment}-query-1"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_query_1.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -108,19 +133,37 @@ resource "aws_lambda_permission" "query_1" {
   function_name = aws_lambda_function.query_1.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
-}                 
+}
 
 
 # ------------------------------ QUERY 2 ---------------------------------------
 data "archive_file" "lambda_query_2" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_2"
-  output_path = "${path.module}/build/lambda_query_2.zip"
+  source_dir  = "${path.root}/../../functions/query_2"
+  output_path = "${path.root}/build/lambda_query_2.zip"
+}
+
+resource "aws_iam_role" "lambda_exec_query_2" {
+  name = "${var.app_name}-${var.environment}-query-2"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_2_basic" {
+  role       = aws_iam_role.lambda_exec_query_2.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_2_dynamodb" {
+  role       = aws_iam_role.lambda_exec_query_2.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
 }
 
 resource "aws_lambda_function" "query_2" {
   function_name = "${var.app_name}-${var.environment}-query-2"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_query_2.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -165,13 +208,31 @@ resource "aws_lambda_permission" "query_2" {
 # ------------------------------ QUERY 3 ---------------------------------------
 data "archive_file" "lambda_query_3" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_3"
-  output_path = "${path.module}/build/lambda_query_3.zip"
+  source_dir  = "${path.root}/../../functions/query_3"
+  output_path = "${path.root}/build/lambda_query_3.zip"
+}
+
+resource "aws_iam_role" "lambda_exec_query_3" {
+  name = "${var.app_name}-${var.environment}-query-3"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_3_basic" {
+  role       = aws_iam_role.lambda_exec_query_3.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_3_dynamodb" {
+  role       = aws_iam_role.lambda_exec_query_3.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
 }
 
 resource "aws_lambda_function" "query_3" {
   function_name = "${var.app_name}-${var.environment}-query-3"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_query_3.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -215,13 +276,31 @@ resource "aws_lambda_permission" "query_3" {
 # ------------------------------ QUERY 4 ---------------------------------------
 data "archive_file" "lambda_query_4" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_4"
-  output_path = "${path.module}/build/lambda_query_4.zip"
+  source_dir  = "${path.root}/../../functions/query_4"
+  output_path = "${path.root}/build/lambda_query_4.zip"
+}
+
+resource "aws_iam_role" "lambda_exec_query_4" {
+  name = "${var.app_name}-${var.environment}-query-4"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_basic" {
+  role       = aws_iam_role.lambda_exec_query_4.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_dynamodb" {
+  role       = aws_iam_role.lambda_exec_query_4.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
 }
 
 resource "aws_lambda_function" "query_4" {
   function_name = "${var.app_name}-${var.environment}-query-4"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_query_4.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -265,13 +344,31 @@ resource "aws_lambda_permission" "query_4" {
 # ------------------------------ QUERY 5 ---------------------------------------
 data "archive_file" "lambda_query_5" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_5"
-  output_path = "${path.module}/build/lambda_query_5.zip"
+  source_dir  = "${path.root}/../../functions/query_5"
+  output_path = "${path.root}/build/lambda_query_5.zip"
+}
+
+resource "aws_iam_role" "lambda_exec_query_5" {
+  name = "${var.app_name}-${var.environment}-query-5"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_5_basic" {
+  role       = aws_iam_role.lambda_exec_query_5.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_5_dynamodb" {
+  role       = aws_iam_role.lambda_exec_query_5.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
 }
 
 resource "aws_lambda_function" "query_5" {
   function_name = "${var.app_name}-${var.environment}-query-5"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_query_5.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -316,13 +413,31 @@ resource "aws_lambda_permission" "query_5" {
 # ------------------------------ QUERY 6 ---------------------------------------
 data "archive_file" "lambda_query_6" {
   type        = "zip"
-  source_dir  = "${path.module}/../functions/query_6"
-  output_path = "${path.module}/build/lambda_query_6.zip"
+  source_dir  = "${path.root}/../../functions/query_6"
+  output_path = "${path.root}/build/lambda_query_6.zip"
+}
+
+resource "aws_iam_role" "lambda_exec_query_6" {
+  name = "${var.app_name}-${var.environment}-query-6"
+
+  assume_role_policy = local.assume_role_policy_json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_6_basic" {
+  role       = aws_iam_role.lambda_exec_query_6.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_6_dynamodb" {
+  role       = aws_iam_role.lambda_exec_query_6.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
 }
 
 resource "aws_lambda_function" "query_6" {
   function_name = "${var.app_name}-${var.environment}-query-6"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.lambda_exec_query_6.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.11"
 
@@ -362,6 +477,3 @@ resource "aws_lambda_permission" "query_6" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
 }
-
-
-

@@ -1,4 +1,7 @@
-import { signInWithCognito, signUpWithCognito } from "@/auth-actions"
+"use client"
+
+import Link from "next/link"
+import { signInWithCognito } from "@/auth-actions"
 import { Button } from "@/components/ui/button"
 import {
   CardContent,
@@ -25,9 +28,8 @@ export function LoginFormPanel({ redirectTo = "/dashboard" }: LoginFormPanelProp
       <CardContent className="auth-form-content">
         <FieldGroup className="auth-form-actions">
           <form
-            action={async () => {
-              "use server"
-              await signInWithCognito(redirectTo)
+            action={() => {
+              signInWithCognito(redirectTo)
             }}
           >
             <Button type="submit" className="auth-button-full">
@@ -35,16 +37,11 @@ export function LoginFormPanel({ redirectTo = "/dashboard" }: LoginFormPanelProp
             </Button>
           </form>
 
-          <form
-            action={async () => {
-              "use server"
-              await signUpWithCognito(redirectTo)
-            }}
-          >
-            <Button type="submit" variant="outline" className="auth-signup-button">
+          <Button asChild variant="outline" className="auth-signup-button">
+            <Link href="/signup">
               Create an account
-            </Button>
-          </form>
+            </Link>
+          </Button>
         </FieldGroup>
       </CardContent>
     </div>
