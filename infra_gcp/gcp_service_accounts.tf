@@ -1,5 +1,5 @@
 resource "google_service_account" "inference_runtime" {
-  account_id   = "${var.app_name}-${var.environment}-inference-runtime"
+  account_id   = "${var.app_name}-${var.environment}-inf-rt"
   display_name = "EcoLens Inference Runtime Service Account"
 }
 
