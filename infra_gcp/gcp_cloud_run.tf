@@ -19,6 +19,13 @@ resource "google_cloud_run_v2_service" "inference" {
         container_port = 8080
       }
 
+      resources {
+        limits = {
+          cpu    = "2"
+          memory = "4Gi"
+        }
+      }
+
       env {
         name  = "MODEL_BUCKET_NAME"
         value = google_storage_bucket.models.name
