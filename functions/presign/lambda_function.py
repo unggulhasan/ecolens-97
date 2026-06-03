@@ -23,7 +23,7 @@ def handler(event, context):
     filename = body.get("filename")
     file_type = body.get("file_type")
     checksum = body.get("checksum")
-    tmp_query = body.get("tmp-query", False)
+    tmp_query = bool(body.get("tmp_query", False))
 
     if not filename:
         return _error(400, "Missing required field: filename")
