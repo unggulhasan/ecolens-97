@@ -594,6 +594,32 @@
     font-size: 0.875rem;
   }
 
+  .upload-action-container {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+  }
+
+  .upload-action-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .upload-spinner {
+    animation: spin 1s linear infinite;
+    height: 1rem;
+    width: 1rem;
+  }
+
+  .upload-spinner-circle {
+    opacity: 0.25;
+  }
+
+  .upload-spinner-path {
+    opacity: 0.75;
+  }
+
   /* Protected Page Layouts */
   .page-container {
     flex: 1 1 0%;

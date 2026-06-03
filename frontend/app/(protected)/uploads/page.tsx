@@ -11,7 +11,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
-import { getPresignedUrl } from "@/auth-actions"
+import { getPresignedUrl } from "@/lib/upload-actions"
+import { calculateChecksum, uploadFileToS3 } from "@/lib/s3-client"
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
@@ -81,17 +82,6 @@ export default function UploadsPage() {
     }
   }
 
-  const calculateChecksum = async (file: File): Promise<string> => {
-    const fileBuffer = await file.arrayBuffer()
-    const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer)
-    const bytes = new Uint8Array(hashBuffer)
-    let binary = ""
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i])
-    }
-    return btoa(binary)
-  }
-
   const handleUpload = async () => {
     if (!selectedFile) return
     setError(null)
@@ -113,25 +103,23 @@ export default function UploadsPage() {
 
       // 3. Upload raw file bytes directly to S3
       setUploadStatus("uploading")
-      const uploadResponse = await fetch(presignData.url, {
-        method: "PUT",
-        headers: {
-          "Content-Type": selectedFile.type,
-          "x-amz-checksum-sha256": computedChecksum,
-          "x-amz-meta-user-email": presignData.user_email,
-        },
-        body: selectedFile,
-      })
-
-      if (!uploadResponse.ok) {
-        throw new Error(`S3 upload failed with status code ${uploadResponse.status}`)
-      }
+      await uploadFileToS3(
+        presignData.url,
+        selectedFile,
+        computedChecksum,
+        presignData.user_email
+      )
 
       setUploadStatus("success")
       setSelectedFile(null)
     } catch (err: any) {
       console.error("Upload process error:", err)
-      setError(err.message || "Failed to upload file. Please try again.")
+      let displayError = err.message || "Failed to upload file. Please try again."
+      const lowerError = displayError.toLowerCase()
+      if (lowerError.includes("403") || lowerError.includes("forbidden") || lowerError.includes("duplicate")) {
+        displayError = "Upload failed (duplicate file)"
+      }
+      setError(displayError)
       setUploadStatus("error")
     }
   }
@@ -171,7 +159,7 @@ export default function UploadsPage() {
               <div className="upload-success">
                 <span className="upload-success-title">File Uploaded Successfully!</span>
                 <p className="text-sm opacity-80">
-                  Your image or video has been checksummed and securely uploaded to S3.
+                  Your image or video has been securely uploaded to S3.
                 </p>
                 <div className="pt-2">
                   <Button onClick={removeFile} variant="outline">
@@ -260,13 +248,15 @@ export default function UploadsPage() {
                       </Button>
                     </div>
 
-                    <div className="flex justify-end pt-2">
-                      <Button onClick={handleUpload} disabled={isPending}>
-                        {uploadStatus === "checksumming" && "Calculating Checksum..."}
-                        {uploadStatus === "presigning" && "Requesting Presigned URL..."}
-                        {uploadStatus === "uploading" && "Uploading to S3..."}
-                        {uploadStatus === "idle" && "Upload File"}
-                        {uploadStatus === "error" && "Retry Upload"}
+                    <div className="upload-action-container">
+                      <Button onClick={handleUpload} disabled={isPending} className="upload-action-button">
+                        {isPending && (
+                          <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
+                            <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        )}
+                        {isPending ? "Uploading..." : uploadStatus === "error" ? "Retry Upload" : "Upload File"}
                       </Button>
                     </div>
                   </div>
