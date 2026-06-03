@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card"
 import { fetchHello } from "@/lib/api"
 
-export default async function DashboardPage() {
+export default async function SearchPage() {
   const session = await auth()
 
   let helloMessage: string | null = null
@@ -28,8 +28,8 @@ export default async function DashboardPage() {
     <div className="page-container">
       <div className="page-content-wrapper">
         <div className="page-header">
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-description">Your account overview and quick actions.</p>
+          <h1 className="page-title">Search</h1>
+          <p className="page-description">You can search files here.</p>
         </div>
 
         <div className="dashboard-grid">
