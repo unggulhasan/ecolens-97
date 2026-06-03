@@ -18,7 +18,7 @@ import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons
 type TagCountInput = {
   id: string
   tag: string
-  count: number
+  count: number | ""
 }
 
 export function SearchContainer() {
@@ -186,7 +186,9 @@ export function SearchContainer() {
       let data: string[] = []
 
       if (activeTab === "tags-count") {
-        const validTags = tagsCount.filter((t) => t.tag.trim() !== "")
+        const validTags = tagsCount
+          .filter((t) => t.tag.trim() !== "")
+          .map((t) => ({ ...t, count: t.count === "" ? 1 : Number(t.count) }))
         if (validTags.length === 0) {
           throw new Error("Please specify at least one tag.")
         }
@@ -266,9 +268,16 @@ export function SearchContainer() {
                     <Input
                       type="number"
                       min={1}
-                      placeholder="Min Count"
                       value={row.count}
-                      onChange={(e) => updateTagRow(row.id, "count", parseInt(e.target.value) || 1)}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        updateTagRow(row.id, "count", val === "" ? "" : parseInt(val) || "")
+                      }}
+                      onBlur={() => {
+                        if (row.count === "" || isNaN(Number(row.count)) || Number(row.count) < 1) {
+                          updateTagRow(row.id, "count", 1)
+                        }
+                      }}
                       className="w-24"
                     />
                     <Button
