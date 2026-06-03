@@ -1,3 +1,4 @@
+from typing import Any
 from pydantic import BaseModel
 
 class InferenceRequest(BaseModel):
@@ -6,4 +7,4 @@ class InferenceRequest(BaseModel):
 class InferenceResponse(BaseModel):
     status: str
     image_uri: str
-    tags: dict[str, float]
+    tags: dict[str, int]
