@@ -30,7 +30,7 @@ export function SearchContainer() {
   
   // Tab 1: Tags with Minimum Count state
   const [tagsCount, setTagsCount] = React.useState<TagCountInput[]>([
-    { id: "1", tag: "kangaroo", count: 1 },
+    { id: "1", tag: "", count: 1 },
   ])
 
   // Tab 2: Tags Only state
@@ -46,6 +46,23 @@ export function SearchContainer() {
   const [searching, setSearching] = React.useState<boolean>(false)
   const [error, setError] = React.useState<string | null>(null)
   const [results, setResults] = React.useState<string[] | null>(null)
+
+  // Disable search if any required input fields are empty/invalid
+  const isSearchDisabled = React.useMemo(() => {
+    if (activeTab === "tags-count") {
+      return tagsCount.length === 0 || tagsCount.some(row => row.tag.trim() === "" || row.count === "")
+    }
+    if (activeTab === "tags-only") {
+      return tagsOnly.trim() === ""
+    }
+    if (activeTab === "thumbnail") {
+      return thumbnailUrl.trim() === ""
+    }
+    if (activeTab === "file") {
+      return selectedFile === null
+    }
+    return true
+  }, [activeTab, tagsCount, tagsOnly, thumbnailUrl, selectedFile])
 
   // Handle adding/removing tag inputs for Tab 1
   const addTagRow = () => {
@@ -392,7 +409,7 @@ export function SearchContainer() {
             )}
 
             <div className="flex justify-end">
-              <Button onClick={handleSearch} disabled={searching} className="upload-action-button">
+              <Button onClick={handleSearch} disabled={searching || isSearchDisabled} className="upload-action-button">
                 {searching && (
                   <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
                     <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
