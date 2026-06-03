@@ -1,4 +1,6 @@
 locals {
+  persistent_state = data.terraform_remote_state.persistent.outputs
+
   common_tags = {
     App         = var.app_name
     Environment = var.environment
@@ -18,7 +20,7 @@ locals {
     Statement = [{
       Effect   = "Allow"
       Action   = ["s3:PutObject"]
-      Resource = "${data.terraform_remote_state.persistent.outputs.media_bucket_arn}/*"
+      Resource = "${local.persistent_state.media_bucket_arn}/*"
     }]
   })
 
@@ -29,9 +31,9 @@ locals {
 
   frontend_env_vars = {
     AUTH_SECRET         = var.auth_secret
-    AUTH_COGNITO_ID     = data.terraform_remote_state.persistent.outputs.cognito_client_id
-    AUTH_COGNITO_ISSUER = data.terraform_remote_state.persistent.outputs.cognito_issuer
-    AUTH_COGNITO_DOMAIN = data.terraform_remote_state.persistent.outputs.cognito_domain
+    AUTH_COGNITO_ID     = local.persistent_state.cognito_client_id
+    AUTH_COGNITO_ISSUER = local.persistent_state.cognito_issuer
+    AUTH_COGNITO_DOMAIN = local.persistent_state.cognito_domain
     API_BASE_URL        = aws_apigatewayv2_api.main.api_endpoint
   }
 }

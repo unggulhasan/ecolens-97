@@ -1,3 +1,9 @@
+locals {
+  ecr_docker_registry = local.persistent_state.ecr_docker_registry
+  thumbnail_image_uri = "${aws_ecr_repository.thumbnail.repository_url}:latest"
+  base_image_uri      = local.persistent_state.base_image_uri
+}
+
 resource "aws_ecr_repository" "thumbnail" {
   name         = "thumbnail"
   force_delete = true
@@ -30,12 +36,6 @@ resource "aws_ecr_repository_policy" "thumbnail" {
       }
     ]
   })
-}
-
-locals {
-  ecr_docker_registry = data.terraform_remote_state.persistent.outputs.ecr_docker_registry
-  thumbnail_image_uri = "${aws_ecr_repository.thumbnail.repository_url}:latest"
-  base_image_uri      = data.terraform_remote_state.persistent.outputs.base_image_uri
 }
 
 resource "null_resource" "thumbnail_docker_build_push" {

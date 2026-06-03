@@ -8,7 +8,7 @@ resource "aws_cloudwatch_event_rule" "trigger_thumbnail" {
     detail-type = ["Object Created"]
     detail = {
       bucket = {
-        name = [data.terraform_remote_state.persistent.outputs.media_bucket_name]
+        name = [local.persistent_state.media_bucket_name]
       }
       object = {
         key = [{ prefix = "images/" }]
