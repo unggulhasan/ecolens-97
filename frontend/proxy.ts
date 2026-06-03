@@ -18,5 +18,5 @@ export const proxy = auth((req) => {
 })
 
 export const config = {
-  matcher: ["/", "/login", "/signup", "/search/:path*"],
+  matcher: ["/", "/login", "/signup", "/search", "/search/:path*"],
 }

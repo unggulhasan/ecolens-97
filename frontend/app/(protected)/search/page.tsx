@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/card"
 import { fetchHello } from "@/lib/api"
 
+import { SearchContainer } from "@/components/search-container"
+
 export default async function SearchPage() {
   const session = await auth()
 
@@ -31,49 +33,7 @@ export default async function SearchPage() {
           <h1 className="page-title">Search</h1>
           <p className="page-description">You can search files here.</p>
         </div>
-
-        <div className="dashboard-grid">
-          <div className="dashboard-main-content">
-            <Card>
-              <CardHeader>
-                <CardTitle>API /hello</CardTitle>
-                <CardDescription>
-                  Authenticated response from API Gateway
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {helloMessage ? (
-                  <p className="font-mono text-sm bg-muted/30 p-4 rounded-lg border">{helloMessage}</p>
-                ) : (
-                  <p className="text-sm text-destructive">
-                    {helloError ?? "No response yet."}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="dashboard-stats-sidebar">
-            <Card size="sm">
-              <CardHeader>
-                <CardDescription>Total Scans</CardDescription>
-                <CardTitle className="text-3xl font-bold">124</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardDescription>Saved Reports</CardDescription>
-                <CardTitle className="text-3xl font-bold">18</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardDescription>Alerts</CardDescription>
-                <CardTitle className="text-3xl font-bold text-destructive">3 active</CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
+        <SearchContainer />
       </div>
     </div>
   )
