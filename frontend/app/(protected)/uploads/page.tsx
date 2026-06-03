@@ -13,13 +13,14 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { getPresignedUrl } from "@/lib/upload-actions"
 import { calculateChecksum, uploadFileToS3 } from "@/lib/s3-client"
+import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
+import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
 type UploadStatus = "idle" | "checksumming" | "presigning" | "uploading" | "success" | "error"
 
 export default function UploadsPage() {
-  const [dragActive, setDragActive] = React.useState(false)
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [checksum, setChecksum] = React.useState<string | null>(null)
@@ -29,41 +30,16 @@ export default function UploadsPage() {
     setError(null)
     setUploadStatus("idle")
     
-    // Check type (image or video)
-    const isImage = file.type.startsWith("image/")
-    const isVideo = file.type.startsWith("video/")
-    if (!isImage && !isVideo) {
-      setError("Only image and video files are allowed.")
-      return
-    }
-    
-    // Check size (up to 1GB)
-    if (file.size > MAX_SIZE_BYTES) {
-      setError("File size exceeds the 1GB limit.")
+    const errorMsg = validateUploadedFile(file, MAX_SIZE_BYTES)
+    if (errorMsg) {
+      setError(errorMsg)
       return
     }
     
     setSelectedFile(file)
   }
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
-    }
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndSetFile(e.dataTransfer.files[0])
-    }
-  }
+  const { dragActive, handleDrag, handleDrop } = useFileDragAndDrop(validateAndSetFile)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -123,16 +99,6 @@ export default function UploadsPage() {
       setError(displayError)
       setUploadStatus("error")
     }
-  }
-
-  const formatSize = (bytes: number) => {
-    if (bytes >= 1024 * 1024 * 1024) {
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-    }
-    if (bytes >= 1024 * 1024) {
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-    }
-    return `${(bytes / 1024).toFixed(1)} KB`
   }
 
   const isPending = uploadStatus === "checksumming" || uploadStatus === "presigning" || uploadStatus === "uploading"
@@ -232,7 +198,7 @@ export default function UploadsPage() {
                           {selectedFile.name}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          ({formatSize(selectedFile.size)})
+                          ({formatFileSize(selectedFile.size)})
                         </span>
                       </div>
                       <Button

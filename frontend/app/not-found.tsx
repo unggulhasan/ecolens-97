@@ -6,8 +6,8 @@ export default async function NotFound() {
   const session = await auth()
   const isLoggedIn = !!session
 
-  const targetPath = isLoggedIn ? "/dashboard" : "/login"
-  const buttonLabel = isLoggedIn ? "Back to Dashboard" : "Back to Sign In"
+  const targetPath = isLoggedIn ? "/search" : "/login"
+  const buttonLabel = isLoggedIn ? "Back to Main Screen" : "Back to Sign In"
 
   return (
     <div className="not-found-page">
