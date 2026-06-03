@@ -700,3 +700,21 @@
     font-weight: 600;
     font-size: 1.125rem;
   }
+
+  /* Selected Sidebar Tab Active Green State */
+  [data-sidebar="menu-button"][data-active="true"],
+  [data-active="true"] {
+    background-color: color-mix(in oklch, var(--primary) 10%, transparent) !important;
+    color: var(--primary) !important;
+  }
+
+  [data-sidebar="menu-button"][data-active="true"] svg,
+  [data-active="true"] svg {
+    color: var(--primary) !important;
+  }
+
+  [data-sidebar="menu-button"][data-active="true"]:hover,
+  [data-active="true"]:hover {
+    background-color: color-mix(in oklch, var(--primary) 15%, transparent) !important;
+    color: var(--primary) !important;
+  }
