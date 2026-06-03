@@ -4,7 +4,6 @@ requests
 pydantic
 google-cloud-storage
 megadetector
-onnx==1.17.0
 onnx2torch
 tqdm
 pillow
