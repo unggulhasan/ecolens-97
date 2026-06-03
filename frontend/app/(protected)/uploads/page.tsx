@@ -114,7 +114,12 @@ export default function UploadsPage() {
       setSelectedFile(null)
     } catch (err: any) {
       console.error("Upload process error:", err)
-      setError(err.message || "Failed to upload file. Please try again.")
+      let displayError = err.message || "Failed to upload file. Please try again."
+      const lowerError = displayError.toLowerCase()
+      if (lowerError.includes("403") || lowerError.includes("forbidden") || lowerError.includes("duplicate")) {
+        displayError = "Upload failed (duplicate file)"
+      }
+      setError(displayError)
       setUploadStatus("error")
     }
   }
