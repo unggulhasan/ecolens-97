@@ -13,10 +13,13 @@ logger.setLevel(logging.INFO)
 
 MEDIA_BUCKET_NAME = os.environ["MEDIA_BUCKET_NAME"]
 REGION_NAME = os.environ.get("REGION_NAME", "us-east-1")
+DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 MAX_DIMENSION = 300
 JPEG_QUALITY = 85  # 0-100; lower = smaller file
 
 s3 = boto3.client("s3", region_name=REGION_NAME)
+dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
+table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 
 
 def _thumbnail_key(original_key: str) -> str:
@@ -41,9 +44,22 @@ def _resize(img: np.ndarray) -> np.ndarray:
     return cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
 
+def _get_user_email(bucket: str, key: str) -> str:
+    """Read user-email from S3 object metadata."""
+    try:
+        head = s3.head_object(Bucket=bucket, Key=key)
+        return head.get("Metadata", {}).get("user-email", "")
+    except Exception as e:
+        logger.warning("Could not read metadata for %s: %s", key, e)
+        return ""
+
+
 def _process(bucket: str, key: str) -> dict:
     decoded_key = urllib.parse.unquote_plus(key)
     logger.info("Downloading s3://%s/%s", bucket, decoded_key)
+
+    user_email = _get_user_email(bucket, decoded_key)
+    logger.info("User email from S3 metadata: %s", user_email)
 
     response = s3.get_object(Bucket=bucket, Key=decoded_key)
     raw = response["Body"].read()
@@ -77,6 +93,23 @@ def _process(bucket: str, key: str) -> dict:
         ContentType="image/jpeg",
     )
 
+    # Write record to DynamoDB
+    import datetime
+    file_url = f"s3://{bucket}/{decoded_key}"
+    thumbnail_url = f"s3://{MEDIA_BUCKET_NAME}/{out_key}"
+    item = {
+        "file_url": file_url,
+        "thumbnail_url": thumbnail_url,
+        "file_type": "image",
+        "uploaded_at": datetime.datetime.utcnow().isoformat(),
+        "user_email": user_email,
+    }
+    try:
+        table.put_item(Item=item)
+        logger.info("DynamoDB record written for %s (user: %s)", file_url, user_email)
+    except Exception as e:
+        logger.error("Failed to write DynamoDB record: %s", e)
+
     return {
         "source_key": decoded_key,
         "thumbnail_key": out_key,
@@ -84,6 +117,7 @@ def _process(bucket: str, key: str) -> dict:
         "thumbnail_size_bytes": out_size,
         "thumbnail_width": thumbnail.shape[1],
         "thumbnail_height": thumbnail.shape[0],
+        "user_email": user_email,
     }
 
 

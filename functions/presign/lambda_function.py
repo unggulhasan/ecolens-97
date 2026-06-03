@@ -8,6 +8,15 @@ URL_EXPIRATION = 300
 
 
 def handler(event, context):
+    # Extract user email from JWT claims injected by API Gateway JWT authorizer
+    claims = (
+        event.get("requestContext", {})
+             .get("authorizer", {})
+             .get("jwt", {})
+             .get("claims", {})
+    )
+    user_email = claims.get("email", "")
+
     body = json.loads(event.get("body", "{}"))
     filename = body.get("filename")
     file_type = body.get("file_type")
@@ -38,6 +47,9 @@ def handler(event, context):
         "ContentType": file_type,
         # "ChecksumAlgorithm": "SHA256",
         "ChecksumSHA256": checksum,
+        "Metadata": {
+            "user-email": user_email,
+        },
     }
 
     try:
@@ -56,6 +68,7 @@ def handler(event, context):
             "url": url,
             "key": key,
             "expires_in": URL_EXPIRATION,
+            "user_email": user_email,
         }),
     }
 
