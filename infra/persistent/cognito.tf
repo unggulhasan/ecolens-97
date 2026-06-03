@@ -92,6 +92,6 @@ resource "random_id" "domain_suffix" {
 }
 
 resource "aws_cognito_user_pool_domain" "main" {
-  domain       = "${var.cognito_domain_prefix}-user-pool"
+  domain       = "${var.cognito_domain_prefix}-user-pool-${random_id.domain_suffix.hex}"
   user_pool_id = aws_cognito_user_pool.main.id
 }

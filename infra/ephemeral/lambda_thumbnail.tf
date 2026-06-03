@@ -38,3 +38,26 @@ resource "aws_iam_role_policy_attachment" "thumbnail_ecr_attachment" {
   role       = aws_iam_role.thumbnail_exec.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
+
+resource "aws_iam_role_policy" "thumbnail_s3" {
+  name = "${var.app_name}-${var.environment}-thumbnail-s3"
+  role = aws_iam_role.thumbnail_exec.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ReadSourceImages"
+        Effect = "Allow"
+        Action = ["s3:GetObject"]
+        Resource = "arn:aws:s3:::${local.persistent_state.media_bucket_name}/images/*"
+      },
+      {
+        Sid    = "WriteThumbnails"
+        Effect = "Allow"
+        Action = ["s3:PutObject"]
+        Resource = "arn:aws:s3:::${local.persistent_state.media_bucket_name}/thumbnails/*"
+      }
+    ]
+  })
+}
