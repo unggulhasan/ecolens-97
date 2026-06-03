@@ -18,6 +18,8 @@ export default function UploadsPage() {
   const [dragActive, setDragActive] = React.useState(false)
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  const [checksum, setChecksum] = React.useState<string | null>(null)
+  const [isCalculating, setIsCalculating] = React.useState(false)
 
   const validateAndSetFile = (file: File) => {
     setError(null)
@@ -67,9 +69,37 @@ export default function UploadsPage() {
   const removeFile = () => {
     setSelectedFile(null)
     setError(null)
+    setChecksum(null)
     const fileInput = document.getElementById("file-upload") as HTMLInputElement
     if (fileInput) {
       fileInput.value = ""
+    }
+  }
+
+  const calculateChecksum = async (file: File): Promise<string> => {
+    const fileBuffer = await file.arrayBuffer()
+    const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer)
+    const bytes = new Uint8Array(hashBuffer)
+    let binary = ""
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary)
+  }
+
+  const handleUpload = async () => {
+    if (!selectedFile) return
+    setIsCalculating(true)
+    setError(null)
+    setChecksum(null)
+    try {
+      const computedChecksum = await calculateChecksum(selectedFile)
+      setChecksum(computedChecksum)
+    } catch (err: any) {
+      console.error("Checksum error:", err)
+      setError("Failed to calculate file checksum: " + (err.message || err))
+    } finally {
+      setIsCalculating(false)
     }
   }
 
@@ -88,7 +118,9 @@ export default function UploadsPage() {
       <div className="page-content-wrapper">
         <div className="page-header">
           <h1 className="page-title">Uploads</h1>
-          <p className="page-description">Upload and manage your ecological data files.</p>
+          <p className="page-description">
+            Upload and manage your ecological data files.
+          </p>
         </div>
 
         <Card>
@@ -104,14 +136,18 @@ export default function UploadsPage() {
                 selectedFile
                   ? "disabled"
                   : dragActive
-                  ? "drag-active"
-                  : "cursor-pointer"
+                    ? "drag-active"
+                    : "cursor-pointer"
               }`}
               onDragEnter={selectedFile ? undefined : handleDrag}
               onDragOver={selectedFile ? undefined : handleDrag}
               onDragLeave={selectedFile ? undefined : handleDrag}
               onDrop={selectedFile ? undefined : handleDrop}
-              onClick={selectedFile ? undefined : () => document.getElementById("file-upload")?.click()}
+              onClick={
+                selectedFile
+                  ? undefined
+                  : () => document.getElementById("file-upload")?.click()
+              }
             >
               <input
                 type="file"
@@ -122,30 +158,40 @@ export default function UploadsPage() {
                 onChange={handleFileChange}
               />
               <div className="upload-icon-wrapper">
-                <HugeiconsIcon icon={Upload01Icon} className="size-8" strokeWidth={2} />
+                <HugeiconsIcon
+                  icon={Upload01Icon}
+                  className="size-8"
+                  strokeWidth={2}
+                />
               </div>
-              <p className="font-medium">Drag & drop your file here, or click to select</p>
-              <p className="text-xs text-muted-foreground mt-1">Supports image and video files up to 1GB</p>
+              <p className="font-medium">
+                Drag & drop your file here, or click to select
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Supports image and video files up to 1GB
+              </p>
             </div>
 
-            {error && (
-              <div className="upload-error">
-                {error}
-              </div>
-            )}
+            {error && <div className="upload-error">{error}</div>}
 
             {selectedFile && (
               <div className="space-y-3">
-                <h3 className="font-semibold text-sm">Selected File</h3>
+                <h3 className="text-sm font-semibold">Selected File</h3>
                 <div className="selected-file-card">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="text-muted-foreground flex-shrink-0">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex-shrink-0 text-muted-foreground">
                       <HugeiconsIcon
-                        icon={selectedFile.type.startsWith("video/") ? Video01Icon : Image01Icon}
+                        icon={
+                          selectedFile.type.startsWith("video/")
+                            ? Video01Icon
+                            : Image01Icon
+                        }
                         className="size-5"
                       />
                     </div>
-                    <span className="truncate font-medium">{selectedFile.name}</span>
+                    <span className="truncate font-medium">
+                      {selectedFile.name}
+                    </span>
                     <span className="text-xs text-muted-foreground">
                       ({formatSize(selectedFile.size)})
                     </span>
@@ -158,12 +204,14 @@ export default function UploadsPage() {
                       removeFile()
                     }}
                     className="text-destructive hover:bg-destructive/10"
+                    disabled={isCalculating}
                   >
                     <HugeiconsIcon icon={Delete02Icon} className="size-4" />
                   </Button>
                 </div>
+
                 <div className="flex justify-end pt-2">
-                  <Button onClick={() => alert("Upload functionality not implemented yet.")}>
+                  <Button onClick={handleUpload} disabled={isCalculating}>
                     Upload File
                   </Button>
                 </div>
