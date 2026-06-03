@@ -11,16 +11,22 @@ import {
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
+import { getPresignedUrl } from "@/auth-actions"
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
+
+type UploadStatus = "idle" | "checksumming" | "presigning" | "uploading" | "success" | "error"
 
 export default function UploadsPage() {
   const [dragActive, setDragActive] = React.useState(false)
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  const [checksum, setChecksum] = React.useState<string | null>(null)
+  const [uploadStatus, setUploadStatus] = React.useState<UploadStatus>("idle")
 
   const validateAndSetFile = (file: File) => {
     setError(null)
+    setUploadStatus("idle")
     
     // Check type (image or video)
     const isImage = file.type.startsWith("image/")
@@ -67,9 +73,66 @@ export default function UploadsPage() {
   const removeFile = () => {
     setSelectedFile(null)
     setError(null)
+    setChecksum(null)
+    setUploadStatus("idle")
     const fileInput = document.getElementById("file-upload") as HTMLInputElement
     if (fileInput) {
       fileInput.value = ""
+    }
+  }
+
+  const calculateChecksum = async (file: File): Promise<string> => {
+    const fileBuffer = await file.arrayBuffer()
+    const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer)
+    const bytes = new Uint8Array(hashBuffer)
+    let binary = ""
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary)
+  }
+
+  const handleUpload = async () => {
+    if (!selectedFile) return
+    setError(null)
+    setChecksum(null)
+    
+    try {
+      // 1. Calculate file checksum
+      setUploadStatus("checksumming")
+      const computedChecksum = await calculateChecksum(selectedFile)
+      setChecksum(computedChecksum)
+
+      // 2. Request S3 presigned URL
+      setUploadStatus("presigning")
+      const presignData = await getPresignedUrl(
+        selectedFile.name,
+        selectedFile.type,
+        computedChecksum
+      )
+
+      // 3. Upload raw file bytes directly to S3
+      setUploadStatus("uploading")
+      const uploadResponse = await fetch(presignData.url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": selectedFile.type,
+          "x-amz-checksum-sha256": computedChecksum,
+          "x-amz-meta-user-email": presignData.user_email,
+        },
+        body: selectedFile,
+      })
+
+      if (!uploadResponse.ok) {
+        throw new Error(`S3 upload failed with status code ${uploadResponse.status}`)
+      }
+
+      setUploadStatus("success")
+      setSelectedFile(null)
+    } catch (err: any) {
+      console.error("Upload process error:", err)
+      setError(err.message || "Failed to upload file. Please try again.")
+      setUploadStatus("error")
     }
   }
 
@@ -83,12 +146,17 @@ export default function UploadsPage() {
     return `${(bytes / 1024).toFixed(1)} KB`
   }
 
+  const isPending = uploadStatus === "checksumming" || uploadStatus === "presigning" || uploadStatus === "uploading"
+  const hasSelectedFile = !!selectedFile
+
   return (
     <div className="page-container">
       <div className="page-content-wrapper">
         <div className="page-header">
           <h1 className="page-title">Uploads</h1>
-          <p className="page-description">Upload and manage your ecological data files.</p>
+          <p className="page-description">
+            Upload and manage your ecological data files.
+          </p>
         </div>
 
         <Card>
@@ -99,75 +167,111 @@ export default function UploadsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div
-              className={`upload-dropzone ${
-                selectedFile
-                  ? "disabled"
-                  : dragActive
-                  ? "drag-active"
-                  : "cursor-pointer"
-              }`}
-              onDragEnter={selectedFile ? undefined : handleDrag}
-              onDragOver={selectedFile ? undefined : handleDrag}
-              onDragLeave={selectedFile ? undefined : handleDrag}
-              onDrop={selectedFile ? undefined : handleDrop}
-              onClick={selectedFile ? undefined : () => document.getElementById("file-upload")?.click()}
-            >
-              <input
-                type="file"
-                id="file-upload"
-                accept="image/*,video/*"
-                className="hidden"
-                disabled={!!selectedFile}
-                onChange={handleFileChange}
-              />
-              <div className="upload-icon-wrapper">
-                <HugeiconsIcon icon={Upload01Icon} className="size-8" strokeWidth={2} />
+            {uploadStatus === "success" ? (
+              <div className="upload-success">
+                <span className="upload-success-title">File Uploaded Successfully!</span>
+                <p className="text-sm opacity-80">
+                  Your image or video has been checksummed and securely uploaded to S3.
+                </p>
+                <div className="pt-2">
+                  <Button onClick={removeFile} variant="outline">
+                    Upload Another File
+                  </Button>
+                </div>
               </div>
-              <p className="font-medium">Drag & drop your file here, or click to select</p>
-              <p className="text-xs text-muted-foreground mt-1">Supports image and video files up to 1GB</p>
-            </div>
-
-            {error && (
-              <div className="upload-error">
-                {error}
-              </div>
-            )}
-
-            {selectedFile && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-sm">Selected File</h3>
-                <div className="selected-file-card">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="text-muted-foreground flex-shrink-0">
-                      <HugeiconsIcon
-                        icon={selectedFile.type.startsWith("video/") ? Video01Icon : Image01Icon}
-                        className="size-5"
-                      />
-                    </div>
-                    <span className="truncate font-medium">{selectedFile.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      ({formatSize(selectedFile.size)})
-                    </span>
+            ) : (
+              <>
+                <div
+                  className={`upload-dropzone ${
+                    hasSelectedFile || isPending
+                      ? "disabled"
+                      : dragActive
+                        ? "drag-active"
+                        : "cursor-pointer"
+                  }`}
+                  onDragEnter={hasSelectedFile || isPending ? undefined : handleDrag}
+                  onDragOver={hasSelectedFile || isPending ? undefined : handleDrag}
+                  onDragLeave={hasSelectedFile || isPending ? undefined : handleDrag}
+                  onDrop={hasSelectedFile || isPending ? undefined : handleDrop}
+                  onClick={
+                    hasSelectedFile || isPending
+                      ? undefined
+                      : () => document.getElementById("file-upload")?.click()
+                  }
+                >
+                  <input
+                    type="file"
+                    id="file-upload"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    disabled={hasSelectedFile || isPending}
+                    onChange={handleFileChange}
+                  />
+                  <div className="upload-icon-wrapper">
+                    <HugeiconsIcon
+                      icon={Upload01Icon}
+                      className="size-8"
+                      strokeWidth={2}
+                    />
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeFile()
-                    }}
-                    className="text-destructive hover:bg-destructive/10"
-                  >
-                    <HugeiconsIcon icon={Delete02Icon} className="size-4" />
-                  </Button>
+                  <p className="font-medium">
+                    Drag & drop your file here, or click to select
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Supports image and video files up to 1GB
+                  </p>
                 </div>
-                <div className="flex justify-end pt-2">
-                  <Button onClick={() => alert("Upload functionality not implemented yet.")}>
-                    Upload File
-                  </Button>
-                </div>
-              </div>
+
+                {error && <div className="upload-error">{error}</div>}
+
+                {selectedFile && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Selected File</h3>
+                    <div className="selected-file-card">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex-shrink-0 text-muted-foreground">
+                          <HugeiconsIcon
+                            icon={
+                              selectedFile.type.startsWith("video/")
+                                ? Video01Icon
+                                : Image01Icon
+                            }
+                            className="size-5"
+                          />
+                        </div>
+                        <span className="truncate font-medium">
+                          {selectedFile.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          ({formatSize(selectedFile.size)})
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeFile()
+                        }}
+                        className="text-destructive hover:bg-destructive/10"
+                        disabled={isPending}
+                      >
+                        <HugeiconsIcon icon={Delete02Icon} className="size-4" />
+                      </Button>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <Button onClick={handleUpload} disabled={isPending}>
+                        {uploadStatus === "checksumming" && "Calculating Checksum..."}
+                        {uploadStatus === "presigning" && "Requesting Presigned URL..."}
+                        {uploadStatus === "uploading" && "Uploading to S3..."}
+                        {uploadStatus === "idle" && "Upload File"}
+                        {uploadStatus === "error" && "Retry Upload"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
