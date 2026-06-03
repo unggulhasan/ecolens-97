@@ -40,5 +40,6 @@ export async function getPresignedUrl(
     key: string
     expires_in: number
     user_email: string
+    file_id: string
   }
 }
