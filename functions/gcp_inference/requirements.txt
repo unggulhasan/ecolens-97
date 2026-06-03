@@ -3,11 +3,8 @@ uvicorn[standard]
 requests
 pydantic
 google-cloud-storage
-megadetector==10.0.20
-onnx==1.17.0
+megadetector
 onnx2torch
 tqdm
 pillow
 numpy
-torch
-torchvision
