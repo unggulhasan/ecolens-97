@@ -15,7 +15,7 @@ resource "aws_lambda_function" "presign" {
 
   environment {
     variables = {
-      MEDIA_BUCKET_NAME = data.terraform_remote_state.persistent.outputs.media_bucket_name
+      MEDIA_BUCKET_NAME = local.persistent_state.media_bucket_name
       REGION_NAME       = var.aws_region
     }
   }
