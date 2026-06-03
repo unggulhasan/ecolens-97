@@ -3,6 +3,7 @@ from schemas import InferenceRequest, InferenceResponse
 from inference_service import perform_inference
 from model_loader import download_models
 from gcs_service import download_gcs_file, cleanup_file
+from model_loader import download_models, load_species_model
 
 app = FastAPI()
 
@@ -38,8 +39,9 @@ def infer(request: InferenceRequest):
 @app.get("/test-model-download")
 def test_model_download():
 
-    download_models()
+    results = load_species_model()
 
     return {
         "status": "success"
+        **results
     }
