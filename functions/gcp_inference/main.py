@@ -42,6 +42,6 @@ def test_model_download():
     results = load_species_model()
 
     return {
-        "status": "success"
+        "status": "success",
         **results
     }
