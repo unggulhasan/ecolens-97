@@ -11,7 +11,9 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN python -c "import megadetector; print(megadetector); print('megadetector base import works')"
+RUN pip show megadetector || true
+RUN pip list | grep -i detector || true
+RUN python -c "from megadetector.detection.run_detector_batch import load_and_run_detector_batch; print('MegaDetector import works')"
 
 COPY . .
 
