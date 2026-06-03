@@ -107,7 +107,8 @@ export default function UploadsPage() {
         presignData.url,
         selectedFile,
         computedChecksum,
-        presignData.user_email
+        presignData.user_email,
+        presignData.file_id
       )
 
       setUploadStatus("success")

@@ -13,7 +13,8 @@ export async function uploadFileToS3(
   url: string,
   file: File,
   checksum: string,
-  userEmail: string
+  userEmail: string,
+  userFieldId: string,
 ): Promise<void> {
   const response = await fetch(url, {
     method: "PUT",
@@ -21,6 +22,7 @@ export async function uploadFileToS3(
       "Content-Type": file.type,
       "x-amz-checksum-sha256": checksum,
       "x-amz-meta-user-email": userEmail,
+      "x-amz-meta-file-id": userFieldId,
     },
     body: file,
   })
