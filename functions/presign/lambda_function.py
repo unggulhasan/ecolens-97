@@ -1,10 +1,12 @@
 import json
 import os
 import boto3
+import uuid
 
 MEDIA_BUCKET_NAME = os.environ["MEDIA_BUCKET_NAME"]
 REGION_NAME = os.environ.get("REGION_NAME", "ap-southeast-4")
 URL_EXPIRATION = 300
+FILE_ID = str(uuid.uuid4())
 
 
 def handler(event, context):
@@ -49,6 +51,7 @@ def handler(event, context):
         "ChecksumSHA256": checksum,
         "Metadata": {
             "user-email": user_email,
+            "file-id": FILE_ID,
         },
     }
 
@@ -69,15 +72,16 @@ def handler(event, context):
             "key": key,
             "expires_in": URL_EXPIRATION,
             "user_email": user_email,
+            "file_id": FILE_ID,
         }),
     }
 
 
 def _dir_for(file_type):
     if file_type.startswith("video/"):
-        return "videos"
+        return f"videos/{FILE_ID}"
     if file_type.startswith("image/"):
-        return "images"
+        return f"images/{FILE_ID}"
     return None
 
 

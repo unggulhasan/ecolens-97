@@ -23,11 +23,13 @@ table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 
 
 def _thumbnail_key(original_key: str) -> str:
-    """Map  images/<name>  →  thumbnails/<name>  (strip any leading prefix)."""
-    filename = original_key.split("/")[-1]
-    # Store as JPEG regardless of original format for consistent compression
+    """Map  images/{file_id}/<name>  →  thumbnails/{file_id}/<name>."""
+    parts = original_key.split("/")
+    # expected: ["images", "<file_id>", "<filename>"]
+    file_id = parts[1] if len(parts) >= 3 else "unknown"
+    filename = parts[-1]
     base, _ = os.path.splitext(filename)
-    thumbnail_key = f"thumbnails/{base}.jpg"
+    thumbnail_key = f"thumbnails/{file_id}/{base}.jpg"
     logger.info(f"thumbnail key: {thumbnail_key}")
     return thumbnail_key
 
@@ -52,6 +54,11 @@ def _get_user_email(bucket: str, key: str) -> str:
     except Exception as e:
         logger.warning("Could not read metadata for %s: %s", key, e)
         return ""
+    
+def _extract_file_id(key: str) -> str:
+    """Extract file-id from key path images/{file_id}/{filename}."""
+    parts = key.split("/")
+    return parts[1] if len(parts) >= 3 else "unknown"
 
 
 def _process(bucket: str, key: str) -> dict:
@@ -60,6 +67,9 @@ def _process(bucket: str, key: str) -> dict:
 
     user_email = _get_user_email(bucket, decoded_key)
     logger.info("User email from S3 metadata: %s", user_email)
+
+    file_id = _extract_file_id(decoded_key)
+    logger.info("File ID from key path: %s", file_id)
 
     response = s3.get_object(Bucket=bucket, Key=decoded_key)
     raw = response["Body"].read()
@@ -101,6 +111,7 @@ def _process(bucket: str, key: str) -> dict:
         "file_url": file_url,
         "thumbnail_url": thumbnail_url,
         "file_type": "image",
+        "file_id": file_id,
         "uploaded_at": datetime.datetime.utcnow().isoformat(),
         "user_email": user_email,
     }
