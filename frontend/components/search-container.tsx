@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
+import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 
 type TagCountInput = {
   id: string
@@ -44,16 +45,6 @@ export function SearchContainer() {
   const [error, setError] = React.useState<string | null>(null)
   const [results, setResults] = React.useState<string[] | null>(null)
 
-  const formatSize = (bytes: number) => {
-    if (bytes >= 1024 * 1024 * 1024) {
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-    }
-    if (bytes >= 1024 * 1024) {
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-    }
-    return `${(bytes / 1024).toFixed(1)} KB`
-  }
-
   // Handle adding/removing tag inputs for Tab 1
   const addTagRow = () => {
     const nextId = (tagsCount.length + 1).toString()
@@ -78,15 +69,11 @@ export function SearchContainer() {
 
   // Handle file selection for Tab 4 (image or video)
   const validateAndSetFile = (file: File) => {
-    setError(null)
-    
-    const isImage = file.type.startsWith("image/")
-    const isVideo = file.type.startsWith("video/")
-    if (!isImage && !isVideo) {
-      setError("Only image and video files are allowed.")
+    const errorMsg = validateUploadedFile(file)
+    if (errorMsg) {
+      setError(errorMsg)
       return
     }
-    
     setSelectedFile(file)
   }
 
@@ -391,7 +378,7 @@ export function SearchContainer() {
                         {selectedFile.name}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        ({formatSize(selectedFile.size)})
+                        ({formatFileSize(selectedFile.size)})
                       </span>
                     </div>
                     <Button

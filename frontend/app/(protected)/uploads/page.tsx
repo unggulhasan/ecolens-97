@@ -13,6 +13,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { getPresignedUrl } from "@/lib/upload-actions"
 import { calculateChecksum, uploadFileToS3 } from "@/lib/s3-client"
+import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
@@ -29,17 +30,9 @@ export default function UploadsPage() {
     setError(null)
     setUploadStatus("idle")
     
-    // Check type (image or video)
-    const isImage = file.type.startsWith("image/")
-    const isVideo = file.type.startsWith("video/")
-    if (!isImage && !isVideo) {
-      setError("Only image and video files are allowed.")
-      return
-    }
-    
-    // Check size (up to 1GB)
-    if (file.size > MAX_SIZE_BYTES) {
-      setError("File size exceeds the 1GB limit.")
+    const errorMsg = validateUploadedFile(file, MAX_SIZE_BYTES)
+    if (errorMsg) {
+      setError(errorMsg)
       return
     }
     
@@ -123,16 +116,6 @@ export default function UploadsPage() {
       setError(displayError)
       setUploadStatus("error")
     }
-  }
-
-  const formatSize = (bytes: number) => {
-    if (bytes >= 1024 * 1024 * 1024) {
-      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-    }
-    if (bytes >= 1024 * 1024) {
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-    }
-    return `${(bytes / 1024).toFixed(1)} KB`
   }
 
   const isPending = uploadStatus === "checksumming" || uploadStatus === "presigning" || uploadStatus === "uploading"
@@ -232,7 +215,7 @@ export default function UploadsPage() {
                           {selectedFile.name}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          ({formatSize(selectedFile.size)})
+                          ({formatFileSize(selectedFile.size)})
                         </span>
                       </div>
                       <Button
