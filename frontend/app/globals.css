@@ -595,29 +595,29 @@
   }
 
   .upload-action-container {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: 0.5rem;
+    display: flex !important;
+    justify-content: flex-end !important;
+    padding-top: 0.5rem !important;
   }
 
   .upload-action-button {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
   }
 
   .upload-spinner {
-    animation: spin 1s linear infinite;
-    height: 1rem;
-    width: 1rem;
+    animation: spin 1s linear infinite !important;
+    height: 1rem !important;
+    width: 1rem !important;
   }
 
   .upload-spinner-circle {
-    opacity: 0.25;
+    opacity: 0.25 !important;
   }
 
   .upload-spinner-path {
-    opacity: 0.75;
+    opacity: 0.75 !important;
   }
 
   /* Protected Page Layouts */
