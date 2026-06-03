@@ -11,7 +11,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
-import { getPresignedUrl } from "@/auth-actions"
+import { getPresignedUrl } from "@/lib/upload-actions"
+import { calculateChecksum, uploadFileToS3 } from "@/lib/s3-client"
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
@@ -81,17 +82,6 @@ export default function UploadsPage() {
     }
   }
 
-  const calculateChecksum = async (file: File): Promise<string> => {
-    const fileBuffer = await file.arrayBuffer()
-    const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer)
-    const bytes = new Uint8Array(hashBuffer)
-    let binary = ""
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i])
-    }
-    return btoa(binary)
-  }
-
   const handleUpload = async () => {
     if (!selectedFile) return
     setError(null)
@@ -113,19 +103,12 @@ export default function UploadsPage() {
 
       // 3. Upload raw file bytes directly to S3
       setUploadStatus("uploading")
-      const uploadResponse = await fetch(presignData.url, {
-        method: "PUT",
-        headers: {
-          "Content-Type": selectedFile.type,
-          "x-amz-checksum-sha256": computedChecksum,
-          "x-amz-meta-user-email": presignData.user_email,
-        },
-        body: selectedFile,
-      })
-
-      if (!uploadResponse.ok) {
-        throw new Error(`S3 upload failed with status code ${uploadResponse.status}`)
-      }
+      await uploadFileToS3(
+        presignData.url,
+        selectedFile,
+        computedChecksum,
+        presignData.user_email
+      )
 
       setUploadStatus("success")
       setSelectedFile(null)
