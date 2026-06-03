@@ -13,9 +13,8 @@ resource "aws_lambda_function" "thumbnail" {
 
   environment {
     variables = {
-      MEDIA_BUCKET_NAME   = local.persistent_state.media_bucket_name
-      REGION_NAME         = var.aws_region
-      DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
+      MEDIA_BUCKET_NAME = local.persistent_state.media_bucket_name
+      REGION_NAME       = var.aws_region
     }
   }
 
@@ -58,12 +57,6 @@ resource "aws_iam_role_policy" "thumbnail_s3" {
         Effect = "Allow"
         Action = ["s3:PutObject"]
         Resource = "arn:aws:s3:::${local.persistent_state.media_bucket_name}/thumbnails/*"
-      },
-      {
-        Sid    = "WriteDynamoDB"
-        Effect = "Allow"
-        Action = ["dynamodb:PutItem"]
-        Resource = aws_dynamodb_table.media_files.arn
       }
     ]
   })

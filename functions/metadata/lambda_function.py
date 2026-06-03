@@ -1,0 +1,93 @@
+"""metadata Lambda
+
+Triggered by EventBridge "Object Created" on the thumbnails/ S3 prefix.
+Reads identifying metadata forwarded by the thumbnail Lambda from the
+thumbnail object's S3 metadata, then writes the canonical record to DynamoDB.
+
+This keeps DynamoDB persistence separate from image processing so each
+concern can be retried, scaled, and monitored independently.
+"""
+
+import datetime
+import json
+import logging
+import os
+import urllib.parse
+
+import boto3
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+MEDIA_BUCKET_NAME = os.environ["MEDIA_BUCKET_NAME"]
+REGION_NAME = os.environ.get("REGION_NAME", "us-east-1")
+DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
+
+s3 = boto3.client("s3", region_name=REGION_NAME)
+dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
+table = dynamodb.Table(DYNAMODB_TABLE_NAME)
+
+
+def _read_thumbnail_metadata(bucket: str, key: str) -> dict:
+    """Read the S3 object metadata forwarded by the thumbnail Lambda."""
+    head = s3.head_object(Bucket=bucket, Key=key)
+    meta = head.get("Metadata", {})
+    return {
+        "user_id": meta.get("user-email", ""),
+        "checksum": meta.get("checksum", ""),
+        "source_key": meta.get("source-key", ""),
+        "file_id": meta.get("file-id", ""),
+    }
+
+
+def _write_record(bucket: str, thumb_key: str, meta: dict) -> None:
+    """Write the media file record to DynamoDB."""
+    file_url = f"s3://{bucket}/{meta['source_key']}" if meta["source_key"] else ""
+    thumbnail_url = f"s3://{bucket}/{thumb_key}"
+
+    item = {
+        "file_id": meta["file_id"] or "unknown",
+        "checksum": meta["checksum"],
+        "file_url": file_url,
+        "thumbnail_url": thumbnail_url,
+        "file_type": "image",
+        "uploaded_at": datetime.datetime.utcnow().isoformat() + "Z",
+        "user_id": meta["user_id"],
+    }
+
+    table.put_item(Item=item)
+    logger.info(
+        "DynamoDB record written: file_id=%s user=%s thumb=%s",
+        item["file_id"],
+        item["user_id"],
+        thumbnail_url,
+    )
+
+
+def handler(event, context):
+    logger.info("Received event: %s", json.dumps(event))
+
+    detail = event.get("detail", {})
+    bucket = detail.get("bucket", {}).get("name", MEDIA_BUCKET_NAME)
+    key = detail.get("object", {}).get("key", "")
+
+    if not key:
+        logger.error("No object key in event detail: %s", detail)
+        return {"statusCode": 400, "body": "Missing object key in event"}
+
+    decoded_key = urllib.parse.unquote_plus(key)
+    logger.info("Processing thumbnail s3://%s/%s", bucket, decoded_key)
+
+    meta = _read_thumbnail_metadata(bucket, decoded_key)
+    logger.info("Metadata from thumbnail object: %s", meta)
+
+    _write_record(bucket, decoded_key, meta)
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "thumbnail_key": decoded_key,
+            "file_id": meta["file_id"],
+            "user_id": meta["user_id"],
+        }),
+    }

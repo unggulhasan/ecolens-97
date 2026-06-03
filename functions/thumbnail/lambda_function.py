@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 import os
@@ -13,13 +12,10 @@ logger.setLevel(logging.INFO)
 
 MEDIA_BUCKET_NAME = os.environ["MEDIA_BUCKET_NAME"]
 REGION_NAME = os.environ.get("REGION_NAME", "us-east-1")
-DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 MAX_DIMENSION = 300
 JPEG_QUALITY = 85  # 0-100; lower = smaller file
 
 s3 = boto3.client("s3", region_name=REGION_NAME)
-dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
-table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 
 
 def _thumbnail_key(original_key: str) -> str:
@@ -103,30 +99,20 @@ def _process(bucket: str, key: str) -> dict:
         out_key,
     )
 
+    # Forward identifying metadata on the thumbnail object so the downstream
+    # metadata Lambda can read them without re-fetching the original image.
     s3.put_object(
         Bucket=MEDIA_BUCKET_NAME,
         Key=out_key,
         Body=buf.tobytes(),
         ContentType="image/jpeg",
+        Metadata={
+            "user-email": user_id,
+            "checksum": checksum,
+            "source-key": decoded_key,
+            "file-id": file_id,
+        },
     )
-
-    # Write record to DynamoDB
-    file_url = f"s3://{bucket}/{decoded_key}"
-    thumbnail_url = f"s3://{MEDIA_BUCKET_NAME}/{out_key}"
-    item = {
-        "file_id": file_id,
-        "checksum": checksum,
-        "file_url": file_url,
-        "thumbnail_url": thumbnail_url,
-        "file_type": "image",
-        "uploaded_at": datetime.datetime.utcnow().isoformat() + "Z",
-        "user_id": user_id,
-    }
-    try:
-        table.put_item(Item=item)
-        logger.info("DynamoDB record written for %s (user: %s)", file_url, user_id)
-    except Exception as e:
-        logger.error("Failed to write DynamoDB record: %s", e)
 
     return {
         "source_key": decoded_key,
