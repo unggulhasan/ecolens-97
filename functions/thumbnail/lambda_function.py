@@ -1,4 +1,4 @@
-import io
+import datetime
 import json
 import logging
 import os
@@ -46,15 +46,18 @@ def _resize(img: np.ndarray) -> np.ndarray:
     return cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
 
-def _get_user_email(bucket: str, key: str) -> str:
-    """Read user-email from S3 object metadata."""
+def _get_metadata(bucket: str, key: str) -> tuple:
+    """Read user_id and checksum from S3 object metadata/checksum."""
     try:
-        head = s3.head_object(Bucket=bucket, Key=key)
-        return head.get("Metadata", {}).get("user-email", "")
+        head = s3.head_object(Bucket=bucket, Key=key, ChecksumMode="ENABLED")
+        user_id = head.get("Metadata", {}).get("user-email", "")
+        checksum = head.get("ChecksumSHA256", "")
+        return user_id, checksum
     except Exception as e:
         logger.warning("Could not read metadata for %s: %s", key, e)
-        return ""
-    
+        return "", ""
+
+
 def _extract_file_id(key: str) -> str:
     """Extract file-id from key path images/{file_id}/{filename}."""
     parts = key.split("/")
@@ -65,8 +68,9 @@ def _process(bucket: str, key: str) -> dict:
     decoded_key = urllib.parse.unquote_plus(key)
     logger.info("Downloading s3://%s/%s", bucket, decoded_key)
 
-    user_email = _get_user_email(bucket, decoded_key)
-    logger.info("User email from S3 metadata: %s", user_email)
+    user_id, checksum = _get_metadata(bucket, decoded_key)
+    logger.info("User ID from S3 metadata: %s", user_id)
+    logger.info("Checksum from S3 metadata: %s", checksum)
 
     file_id = _extract_file_id(decoded_key)
     logger.info("File ID from key path: %s", file_id)
@@ -92,8 +96,11 @@ def _process(bucket: str, key: str) -> dict:
     out_size = len(buf)
     logger.info(
         "Uploading thumbnail (%dx%d, %d bytes) to s3://%s/%s",
-        thumbnail.shape[1], thumbnail.shape[0], out_size,
-        MEDIA_BUCKET_NAME, out_key,
+        thumbnail.shape[1],
+        thumbnail.shape[0],
+        out_size,
+        MEDIA_BUCKET_NAME,
+        out_key,
     )
 
     s3.put_object(
@@ -104,20 +111,20 @@ def _process(bucket: str, key: str) -> dict:
     )
 
     # Write record to DynamoDB
-    import datetime
     file_url = f"s3://{bucket}/{decoded_key}"
     thumbnail_url = f"s3://{MEDIA_BUCKET_NAME}/{out_key}"
     item = {
+        "file_id": file_id,
+        "checksum": checksum,
         "file_url": file_url,
         "thumbnail_url": thumbnail_url,
         "file_type": "image",
-        "file_id": file_id,
-        "uploaded_at": datetime.datetime.utcnow().isoformat(),
-        "user_email": user_email,
+        "uploaded_at": datetime.datetime.utcnow().isoformat() + "Z",
+        "user_id": user_id,
     }
     try:
         table.put_item(Item=item)
-        logger.info("DynamoDB record written for %s (user: %s)", file_url, user_email)
+        logger.info("DynamoDB record written for %s (user: %s)", file_url, user_id)
     except Exception as e:
         logger.error("Failed to write DynamoDB record: %s", e)
 
@@ -128,7 +135,7 @@ def _process(bucket: str, key: str) -> dict:
         "thumbnail_size_bytes": out_size,
         "thumbnail_width": thumbnail.shape[1],
         "thumbnail_height": thumbnail.shape[0],
-        "user_email": user_email,
+        "user_id": user_id,
     }
 
 
@@ -146,4 +153,3 @@ def handler(event, context):
     result = _process(bucket, key)
     logger.info("Done: %s", result)
     return {"statusCode": 200, "body": json.dumps(result)}
-

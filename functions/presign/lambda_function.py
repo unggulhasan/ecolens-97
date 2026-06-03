@@ -5,6 +5,7 @@ import uuid
 
 MEDIA_BUCKET_NAME = os.environ["MEDIA_BUCKET_NAME"]
 REGION_NAME = os.environ.get("REGION_NAME", "ap-southeast-4")
+DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 URL_EXPIRATION = 300
 
 
@@ -23,7 +24,7 @@ def handler(event, context):
     filename = body.get("filename")
     file_type = body.get("file_type")
     checksum = body.get("checksum")
-    tmp_query = body.get("tmp-query", False)
+    tmp_query = bool(body.get("tmp_query", False))
 
     if not filename:
         return _error(400, "Missing required field: filename")
@@ -31,6 +32,10 @@ def handler(event, context):
         return _error(400, "Missing required field: file_type")
     if not checksum:
         return _error(400, "Missing required field: checksum")
+
+    # Dedup check: reject if checksum already exists in DynamoDB
+    if _checksum_exists(checksum):
+        return _error(409, f"Duplicate file: checksum already exists")
 
     directory = _dir_for(file_type, file_id, tmp_query)
     if not directory:
@@ -76,6 +81,18 @@ def handler(event, context):
             "file_id": file_id,
         }),
     }
+
+
+def _checksum_exists(checksum: str) -> bool:
+    dynamodb = boto3.client("dynamodb", region_name=REGION_NAME)
+    response = dynamodb.query(
+        TableName=DYNAMODB_TABLE_NAME,
+        IndexName="checksum-gsi",
+        KeyConditionExpression="checksum = :cs",
+        ExpressionAttributeValues={":cs": {"S": checksum}},
+        Limit=1,
+    )
+    return response.get("Count", 0) > 0
 
 
 def _dir_for(file_type, file_id, tmp=False):
