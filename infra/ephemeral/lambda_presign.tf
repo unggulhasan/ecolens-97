@@ -15,8 +15,9 @@ resource "aws_lambda_function" "presign" {
 
   environment {
     variables = {
-      MEDIA_BUCKET_NAME = local.persistent_state.media_bucket_name
-      REGION_NAME       = var.aws_region
+      MEDIA_BUCKET_NAME   = local.persistent_state.media_bucket_name
+      REGION_NAME         = var.aws_region
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
     }
   }
 
@@ -47,4 +48,9 @@ resource "aws_iam_policy" "presign_s3" {
 resource "aws_iam_role_policy_attachment" "presign_s3" {
   role       = aws_iam_role.lambda_exec_role_presign.name
   policy_arn = aws_iam_policy.presign_s3.arn
+}
+
+resource "aws_iam_role_policy_attachment" "presign_dynamodb" {
+  role       = aws_iam_role.lambda_exec_role_presign.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
 }
