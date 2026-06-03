@@ -8,3 +8,5 @@ onnx2torch
 tqdm
 pillow
 numpy
+torch
+torchvision
