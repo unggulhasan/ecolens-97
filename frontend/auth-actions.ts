@@ -72,7 +72,6 @@ export async function signUpWithCognitoAdmin(formData: {
 }
 
 export async function signOutWithCognito() {
-  await signOut({
-    redirectTo: getCognitoLogoutUrl(`${getAuthBaseUrl()}/login`),
-  })
+  await signOut({ redirect: false })
+  redirect(getCognitoLogoutUrl(`${getAuthBaseUrl()}/login`))
 }
