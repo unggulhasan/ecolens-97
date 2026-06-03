@@ -15,12 +15,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
+import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
 
 type TagCountInput = {
   id: string
   tag: string
   count: number | ""
 }
+
+const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
 export function SearchContainer() {
   const [activeTab, setActiveTab] = React.useState<string>("tags-count")
@@ -38,7 +41,6 @@ export function SearchContainer() {
 
   // Tab 4: File Search state
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
-  const [dragActive, setDragActive] = React.useState<boolean>(false)
 
   // Common Search UI state
   const [searching, setSearching] = React.useState<boolean>(false)
@@ -69,7 +71,7 @@ export function SearchContainer() {
 
   // Handle file selection for Tab 4 (image or video)
   const validateAndSetFile = (file: File) => {
-    const errorMsg = validateUploadedFile(file)
+    const errorMsg = validateUploadedFile(file, MAX_SIZE_BYTES)
     if (errorMsg) {
       setError(errorMsg)
       return
@@ -77,24 +79,7 @@ export function SearchContainer() {
     setSelectedFile(file)
   }
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
-    }
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndSetFile(e.dataTransfer.files[0])
-    }
-  }
+  const { dragActive, handleDrag, handleDrop } = useFileDragAndDrop(validateAndSetFile)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

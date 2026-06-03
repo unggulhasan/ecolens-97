@@ -14,13 +14,13 @@ import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons
 import { getPresignedUrl } from "@/lib/upload-actions"
 import { calculateChecksum, uploadFileToS3 } from "@/lib/s3-client"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
+import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
 type UploadStatus = "idle" | "checksumming" | "presigning" | "uploading" | "success" | "error"
 
 export default function UploadsPage() {
-  const [dragActive, setDragActive] = React.useState(false)
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [checksum, setChecksum] = React.useState<string | null>(null)
@@ -39,24 +39,7 @@ export default function UploadsPage() {
     setSelectedFile(file)
   }
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
-    }
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndSetFile(e.dataTransfer.files[0])
-    }
-  }
+  const { dragActive, handleDrag, handleDrop } = useFileDragAndDrop(validateAndSetFile)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
