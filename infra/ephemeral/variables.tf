@@ -21,3 +21,9 @@ variable "auth_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "gcp_ml_endpoint" {
+  description = "GCP ML tagger endpoint URL for Query 4"
+  type        = string
+  default     = ""
+}
