@@ -6,7 +6,6 @@ import uuid
 MEDIA_BUCKET_NAME = os.environ["MEDIA_BUCKET_NAME"]
 REGION_NAME = os.environ.get("REGION_NAME", "ap-southeast-4")
 URL_EXPIRATION = 300
-FILE_ID = str(uuid.uuid4())
 
 
 def handler(event, context):
@@ -18,11 +17,13 @@ def handler(event, context):
              .get("claims", {})
     )
     user_email = claims.get("email", "")
+    file_id = str(uuid.uuid4())
 
     body = json.loads(event.get("body", "{}"))
     filename = body.get("filename")
     file_type = body.get("file_type")
     checksum = body.get("checksum")
+    tmp_query = body.get("tmp-query", False)
 
     if not filename:
         return _error(400, "Missing required field: filename")
@@ -31,7 +32,7 @@ def handler(event, context):
     if not checksum:
         return _error(400, "Missing required field: checksum")
 
-    directory = _dir_for(file_type)
+    directory = _dir_for(file_type, file_id, tmp_query)
     if not directory:
         return _error(400, f"Unsupported file_type: {file_type}")
 
@@ -51,7 +52,7 @@ def handler(event, context):
         "ChecksumSHA256": checksum,
         "Metadata": {
             "user-email": user_email,
-            "file-id": FILE_ID,
+            "file-id": file_id,
         },
     }
 
@@ -72,16 +73,17 @@ def handler(event, context):
             "key": key,
             "expires_in": URL_EXPIRATION,
             "user_email": user_email,
-            "file_id": FILE_ID,
+            "file_id": file_id,
         }),
     }
 
 
-def _dir_for(file_type):
+def _dir_for(file_type, file_id, tmp=False):
+    prefix = "tmp/" if tmp else ""
     if file_type.startswith("video/"):
-        return f"videos/{FILE_ID}"
+        return f"{prefix}videos/{file_id}"
     if file_type.startswith("image/"):
-        return f"images/{FILE_ID}"
+        return f"{prefix}images/{file_id}"
     return None
 
 
