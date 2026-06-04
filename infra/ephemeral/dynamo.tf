@@ -395,6 +395,7 @@ resource "aws_lambda_function" "query_5" {
     variables = {
       DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
       AWS_REGION_NAME     = var.aws_region
+      SNS_TOPIC_ARN       = aws_sns_topic.media_alerts.arn
     }
   }
 
