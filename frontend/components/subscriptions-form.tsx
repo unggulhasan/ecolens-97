@@ -28,8 +28,8 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
 
   // Fetch subscription list
-  const fetchSubscriptions = React.useCallback(async () => {
-    setCheckingStatus(true)
+  const fetchSubscriptions = React.useCallback(async (silent = false) => {
+    if (!silent) setCheckingStatus(true)
     setError(null)
     try {
       const list = await listSubscriptions()
@@ -38,18 +38,28 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
       console.error("Error fetching subscriptions:", err)
       setError("Failed to load subscription list. Make sure the API is available.")
     } finally {
-      setCheckingStatus(false)
+      if (!silent) setCheckingStatus(false)
     }
   }, [])
 
+  // Initial load
   React.useEffect(() => {
     fetchSubscriptions()
   }, [fetchSubscriptions])
 
-  const handleRefresh = () => {
-    setSuccessMessage(null)
-    fetchSubscriptions()
-  }
+  // Automatically poll pending subscriptions in the background
+  // Transitions to verified state instantly once the email link is clicked
+  React.useEffect(() => {
+    const hasPending = subscriptions.some((sub) => sub.status === "pending")
+    if (!hasPending) return
+
+    const intervalId = setInterval(() => {
+      // Fetch silently so there is no layout flickering or loading spinner on screen
+      fetchSubscriptions(true)
+    }, 5000)
+
+    return () => clearInterval(intervalId)
+  }, [subscriptions, fetchSubscriptions])
 
   const handleEdit = (sub: SubscriptionItem) => {
     setEmail(sub.email)
@@ -156,31 +166,24 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
               Emails currently configured to receive species notifications.
             </CardDescription>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh}
-            disabled={checkingStatus || loading}
-          >
-            {checkingStatus ? (
-              <svg className="upload-spinner size-3 mr-1" fill="none" viewBox="0 0 24 24">
-                <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          
+          {/* Status Indicator */}
+          {subscriptions.some(s => s.status === "pending") && (
+            <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium animate-pulse">
+              <svg className="size-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-            ) : (
-              <svg className="size-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-              </svg>
-            )}
-            Refresh Status
-          </Button>
+              <span>Waiting for confirmation...</span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="pt-6">
           {checkingStatus && subscriptions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2">
-              <svg className="upload-spinner size-6 text-primary" fill="none" viewBox="0 0 24 24">
-                <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              <svg className="upload-spinner size-6 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="upload-spinner-circle opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="upload-spinner-path opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
               <p className="text-sm text-muted-foreground">Checking subscription statuses...</p>
             </div>
