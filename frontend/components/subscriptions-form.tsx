@@ -6,19 +6,25 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { subscribeToTag, listSubscriptions, unsubscribeEmail } from "@/lib/subscription-actions"
 
-type SubscriptionsFormProps = {
-  initialEmail?: string | null
-}
-
 type SubscriptionItem = {
   email: string
   status: "verified" | "pending"
   tags: string[]
 }
 
-export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
-  const [subscriptions, setSubscriptions] = React.useState<SubscriptionItem[]>([])
-  const [email, setEmail] = React.useState(initialEmail || "")
+type SubscriptionsFormProps = {
+  initialEmail?: string | null
+  initialSubscriptions?: SubscriptionItem[]
+  initialIsSubscribed?: boolean
+}
+
+export function SubscriptionsForm({ 
+  initialEmail,
+  initialSubscriptions = [],
+  initialIsSubscribed = false
+}: SubscriptionsFormProps) {
+  const [subscriptions, setSubscriptions] = React.useState<SubscriptionItem[]>(initialSubscriptions)
+  const [email, setEmail] = React.useState(initialIsSubscribed ? "" : (initialEmail || ""))
   const [tagsString, setTagsString] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [checkingStatus, setCheckingStatus] = React.useState(false)
@@ -34,13 +40,21 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
     try {
       const list = await listSubscriptions()
       setSubscriptions(list)
+      
+      // Auto-clear input email if the default account email is already subscribed
+      if (initialEmail) {
+        const isSubscribed = list.some((sub) => sub.email.toLowerCase() === initialEmail.toLowerCase())
+        if (isSubscribed) {
+          setEmail((prev) => (prev.toLowerCase() === initialEmail.toLowerCase() ? "" : prev))
+        }
+      }
     } catch (err: any) {
       console.error("Error fetching subscriptions:", err)
       setError("Failed to load subscription list. Make sure the API is available.")
     } finally {
       if (!silent) setCheckingStatus(false)
     }
-  }, [])
+  }, [initialEmail])
 
   // Initial load
   React.useEffect(() => {
@@ -48,13 +62,11 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
   }, [fetchSubscriptions])
 
   // Automatically poll pending subscriptions in the background
-  // Transitions to verified state instantly once the email link is clicked
   React.useEffect(() => {
     const hasPending = subscriptions.some((sub) => sub.status === "pending")
     if (!hasPending) return
 
     const intervalId = setInterval(() => {
-      // Fetch silently so there is no layout flickering or loading spinner on screen
       fetchSubscriptions(true)
     }, 5000)
 
@@ -70,7 +82,8 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
   }
 
   const handleCancelEdit = () => {
-    setEmail(initialEmail || "")
+    const isSubscribed = subscriptions.some((sub) => sub.email.toLowerCase() === initialEmail?.toLowerCase())
+    setEmail(isSubscribed ? "" : (initialEmail || ""))
     setTagsString("")
     setIsEditing(false)
     setError(null)
@@ -85,11 +98,18 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
     try {
       await unsubscribeEmail(emailToDelete)
       setSuccessMessage(`Successfully unsubscribed ${emailToDelete}.`)
-      await fetchSubscriptions()
       
-      // If we were editing this email, reset the form
+      // Refresh list
+      const list = await listSubscriptions()
+      setSubscriptions(list)
+      
+      // If we deleted the primary email, it is no longer subscribed, so reset input email back to initialEmail
+      const isSubscribed = list.some((sub) => sub.email.toLowerCase() === initialEmail?.toLowerCase())
+      if (email === emailToDelete || email === "") {
+        setEmail(isSubscribed ? "" : (initialEmail || ""))
+      }
+      
       if (email === emailToDelete) {
-        setEmail(initialEmail || "")
         setTagsString("")
         setIsEditing(false)
       }
@@ -139,13 +159,15 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
         )
       }
       
-      // Reset form fields
-      setEmail(initialEmail || "")
+      // Refresh list to show updated state
+      const list = await listSubscriptions()
+      setSubscriptions(list)
+      
+      // Reset form fields. Clear email input if primary email is now subscribed.
+      const isSubscribed = list.some((sub) => sub.email.toLowerCase() === initialEmail?.toLowerCase())
+      setEmail(isSubscribed ? "" : (initialEmail || ""))
       setTagsString("")
       setIsEditing(false)
-      
-      // Refresh list to show updated state
-      await fetchSubscriptions()
     } catch (err: any) {
       console.error(err)
       setError(err.message || "An error occurred while creating subscription.")
