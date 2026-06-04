@@ -21,7 +21,7 @@ resource "google_service_account" "orchestrator_runtime" {
 }
 
 resource "google_service_account" "aws_orchestrator_invoker" {
-  account_id   = "${var.app_name}-${var.environment}-aws-orch-invoker"
+  account_id   = "${var.app_name}-aws-och-invkr"
   display_name = "AWS Orchestrator Invoker"
 }
 
