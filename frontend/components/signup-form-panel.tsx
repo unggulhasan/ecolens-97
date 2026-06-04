@@ -2,6 +2,9 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import { signUpWithCognitoAdmin } from "@/auth-actions"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,27 +13,41 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Field, FieldLabel, FieldGroup } from "@/components/ui/field"
+import { Field, FieldLabel, FieldGroup, FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
+const signupSchema = z.object({
+  email: z.string().min(1, "Email address is required.").email("Please enter a valid email address."),
+  givenName: z.string().min(1, "First name is required."),
+  familyName: z.string().min(1, "Last name is required."),
+})
+
+type SignupFormValues = z.infer<typeof signupSchema>
 
 export function SignupFormPanel() {
-  const [email, setEmail] = useState("")
-  const [givenName, setGivenName] = useState("")
-  const [familyName, setFamilyName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: "",
+      givenName: "",
+      familyName: "",
+    },
+  })
+
+  const onSubmit = async (data: SignupFormValues) => {
     setError(null)
     setLoading(true)
 
     try {
       const result = await signUpWithCognitoAdmin({
-        email,
-        givenName,
-        familyName,
+        email: data.email,
+        givenName: data.givenName,
+        familyName: data.familyName,
       })
 
       if (result.success) {
@@ -46,10 +63,11 @@ export function SignupFormPanel() {
   }
 
   if (success) {
+    const emailValue = form.getValues("email")
     return (
-      <div className="auth-form-panel">
-        <div className="auth-success-container">
-          <div className="auth-success-icon-wrapper">
+      <div className="authFormPanel">
+        <div className="authSuccessContainer">
+          <div className="authSuccessIconWrapper">
             <svg
               className="size-8"
               fill="none"
@@ -64,10 +82,10 @@ export function SignupFormPanel() {
               />
             </svg>
           </div>
-          <CardHeader className="auth-success-header">
-            <CardTitle className="auth-success-title">Check your email</CardTitle>
-            <CardDescription className="auth-success-description">
-              We have sent a temporary password to <strong className="text-foreground">{email}</strong>. Please check your inbox to sign in.
+          <CardHeader className="authSuccessHeader">
+            <CardTitle className="authSuccessTitle">Check your email</CardTitle>
+            <CardDescription className="authSuccessDescription">
+              We have sent a temporary password to <strong className="text-foreground">{emailValue}</strong>. Please check your inbox to sign in.
             </CardDescription>
           </CardHeader>
           <Button asChild className="w-full mt-4">
@@ -81,69 +99,96 @@ export function SignupFormPanel() {
   }
 
   return (
-    <div className="auth-form-panel">
-      <CardHeader className="auth-form-header">
-        <CardTitle className="auth-form-title">Create Account</CardTitle>
-        <CardDescription className="auth-form-description">
+    <div className="authFormPanel">
+      <CardHeader className="authFormHeader">
+        <CardTitle className="authFormTitle">Create Account</CardTitle>
+        <CardDescription className="authFormDescription">
           Sign up to register a new account.
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="auth-form-content">
-        <form onSubmit={handleSubmit} className="auth-form-spacing">
+      <CardContent className="authFormContent">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="authFormSpacing">
           {error && (
-            <div className="auth-error-alert">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           <FieldGroup className="gap-4">
-            <Field>
-              <FieldLabel htmlFor="signup-email">Email Address</FieldLabel>
-              <Input
-                id="signup-email"
-                type="email"
-                placeholder="name@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
+            <Controller
+              name="email"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor="signup-email">Email Address</FieldLabel>
+                  <Input
+                    {...field}
+                    id="signup-email"
+                    type="email"
+                    placeholder="name@example.com"
+                    required
+                    disabled={loading}
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            <div className="authFormGrid2">
+              <Controller
+                name="givenName"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="signup-firstname">First Name</FieldLabel>
+                    <Input
+                      {...field}
+                      id="signup-firstname"
+                      type="text"
+                      placeholder="John"
+                      required
+                      disabled={loading}
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
               />
-            </Field>
 
-            <div className="auth-form-grid-2">
-              <Field>
-                <FieldLabel htmlFor="signup-firstname">First Name</FieldLabel>
-                <Input
-                  id="signup-firstname"
-                  type="text"
-                  placeholder="John"
-                  required
-                  value={givenName}
-                  onChange={(e) => setGivenName(e.target.value)}
-                  disabled={loading}
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="signup-lastname">Last Name</FieldLabel>
-                <Input
-                  id="signup-lastname"
-                  type="text"
-                  placeholder="Doe"
-                  required
-                  value={familyName}
-                  onChange={(e) => setFamilyName(e.target.value)}
-                  disabled={loading}
-                />
-              </Field>
+              <Controller
+                name="familyName"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="signup-lastname">Last Name</FieldLabel>
+                    <Input
+                      {...field}
+                      id="signup-lastname"
+                      type="text"
+                      placeholder="Doe"
+                      required
+                      disabled={loading}
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
             </div>
 
-            <Button type="submit" className="auth-button-full mt-2" disabled={loading}>
+            <Button type="submit" className="authButtonFull mt-2" disabled={loading}>
               {loading ? "Creating account..." : "Sign Up"}
             </Button>
 
-            <Button asChild variant="outline" className="auth-signup-button" disabled={loading}>
+            <Button asChild variant="outline" className="authSignupButton" disabled={loading}>
               <Link href="/login">
                 Already have an account? Sign In
               </Link>

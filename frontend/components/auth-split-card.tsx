@@ -14,25 +14,25 @@ type AuthSplitCardProps = {
 
 export function AuthSplitCard({ mode, redirectTo }: AuthSplitCardProps) {
   return (
-    <Card className="auth-card">
-      <div className="auth-card-grid">
+    <Card className="authCard">
+      <div className="authCardGrid">
         <AuthWelcomePanel />
         <Separator
           orientation="vertical"
-          className="auth-separator auth-separator-vertical"
+          className="authSeparator authSeparatorVertical"
         />
-        <Separator className="auth-separator auth-separator-horizontal" />
-        <div className="auth-slider-container">
+        <Separator className="authSeparator authSeparatorHorizontal" />
+        <div className="authSliderContainer">
           <div
             className={cn(
-              "auth-slider-track",
-              mode === "signup" ? "slide-to-signup" : "slide-to-login"
+              "authSliderTrack",
+              mode === "signup" ? "slideToSignup" : "slideToLogin"
             )}
           >
-            <div className="auth-slider-slide">
+            <div className="authSliderSlide">
               <LoginFormPanel redirectTo={redirectTo} />
             </div>
-            <div className="auth-slider-slide">
+            <div className="authSliderSlide">
               <SignupFormPanel />
             </div>
           </div>

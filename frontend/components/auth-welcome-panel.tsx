@@ -16,13 +16,13 @@ export function AuthWelcomePanel({
   description = "Explore and share Australian wildlife through your lens.",
 }: AuthWelcomePanelProps) {
   return (
-    <div className="auth-welcome-panel">
-      <CardHeader className="auth-welcome-header">
-        <CardDescription className="auth-welcome-eyebrow">
+    <div className="authWelcomePanel">
+      <CardHeader className="authWelcomeHeader">
+        <CardDescription className="authWelcomeEyebrow">
           {eyebrow}
         </CardDescription>
-        <CardTitle className="auth-welcome-title">{title}</CardTitle>
-        <CardDescription className="auth-welcome-description">
+        <CardTitle className="authWelcomeTitle">{title}</CardTitle>
+        <CardDescription className="authWelcomeDescription">
           {description}
         </CardDescription>
       </CardHeader>
