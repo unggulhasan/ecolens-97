@@ -54,16 +54,16 @@ def classify_crop(crop_path: str) -> str:
     for index in sorted_indexes[:5]:
         index = int(index)
 
-    scientific_name = species_classes[index]
-    common_name = get_common_name(scientific_name)
-    confidence = float(probabilities[index])
+        scientific_name = species_classes[index]
+        common_name = get_common_name(scientific_name)
+        confidence = float(probabilities[index])
 
-    top_predictions.append({
-        "index": index,
-        "scientific_name": scientific_name,
-        "common_name": common_name,
-        "confidence": confidence
-    })
+        top_predictions.append({
+            "index": index,
+            "scientific_name": scientific_name,
+            "common_name": common_name,
+            "confidence": confidence
+        })
 
     print("Top 5 predictions:", top_predictions)
 
