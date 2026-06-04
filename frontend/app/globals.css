@@ -549,6 +549,185 @@
     background-color: color-mix(in oklch, var(--destructive) 10%, transparent) !important;
   }
 
+  /* Notification Dropdown Menu */
+  @layer components {
+    .notification-dropdown-container {
+      position: relative !important;
+    }
+
+    .notification-dropdown-trigger {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      position: relative !important;
+      width: 2.25rem !important;
+      height: 2.25rem !important;
+      color: var(--foreground) !important;
+      background: transparent !important;
+      border: none !important;
+      cursor: pointer !important;
+      border-radius: var(--radius-md) !important;
+      transition: background-color 0.2s, transform 0.1s !important;
+    }
+
+    .notification-dropdown-trigger:hover {
+      background-color: var(--secondary) !important;
+    }
+
+    .notification-dropdown-trigger:active {
+      transform: scale(0.95) !important;
+    }
+
+    .notification-badge {
+      position: absolute !important;
+      top: 0.125rem !important;
+      right: 0.125rem !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-width: 1.125rem !important;
+      height: 1.125rem !important;
+      padding: 0 0.25rem !important;
+      font-size: 0.7rem !important;
+      font-weight: 700 !important;
+      line-height: 1 !important;
+      color: #ffffff !important;
+      background-color: var(--destructive) !important;
+      border-radius: 9999px !important;
+      border: 2px solid var(--card) !important;
+      animation: pulseBadge 2s infinite !important;
+    }
+
+    .notification-dropdown-menu {
+      position: absolute !important;
+      right: 0 !important;
+      top: 100% !important;
+      margin-top: 0.5rem !important;
+      width: 24rem !important; /* wider width */
+      max-width: calc(100vw - 2rem) !important;
+      background-color: var(--card) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: var(--radius-lg) !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+      z-index: 50 !important;
+      animation: dropdownSlideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+    }
+
+    .notification-dropdown-header {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 0.75rem 1rem !important;
+      border-bottom: 1px solid var(--border) !important;
+      background-color: color-mix(in oklch, var(--card) 98%, var(--foreground)) !important;
+    }
+
+    .notification-dropdown-title {
+      font-size: 0.875rem !important;
+      font-weight: 600 !important;
+      color: var(--foreground) !important;
+    }
+
+    .notification-mark-read-btn {
+      font-size: 0.75rem !important;
+      font-weight: 500 !important;
+      color: var(--primary) !important;
+      background: transparent !important;
+      border: none !important;
+      cursor: pointer !important;
+      transition: color 0.15s !important;
+    }
+
+    .notification-mark-read-btn:hover {
+      color: color-mix(in oklch, var(--primary) 80%, #000000) !important;
+      text-decoration: underline !important;
+    }
+
+    .notification-list {
+      max-height: 24rem !important;
+      overflow-y: auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .notification-item {
+      display: flex !important;
+      align-items: flex-start !important;
+      gap: 0.75rem !important;
+      padding: 1rem !important;
+      border-bottom: 1px solid var(--border) !important;
+      background-color: var(--card) !important;
+      transition: background-color 0.15s !important;
+      user-select: none !important;
+    }
+
+    .notification-item:last-child {
+      border-bottom: none !important;
+    }
+
+    .notification-item-unclickable {
+      pointer-events: none !important;
+    }
+
+    .notification-item-unread {
+      background-color: color-mix(in oklch, var(--primary) 4%, var(--card)) !important;
+    }
+
+    .notification-status-dot {
+      width: 0.5rem !important;
+      height: 0.5rem !important;
+      border-radius: 9999px !important;
+      background-color: var(--primary) !important;
+      margin-top: 0.375rem !important;
+      flex-shrink: 0 !important;
+    }
+
+    .notification-content {
+      flex: 1 !important;
+      min-width: 0 !important;
+    }
+
+    .notification-item-title {
+      font-size: 0.875rem !important;
+      font-weight: 600 !important;
+      color: var(--foreground) !important;
+      line-height: 1.25 !important;
+    }
+
+    .notification-item-message {
+      font-size: 0.75rem !important;
+      color: var(--muted-foreground) !important;
+      margin-top: 0.25rem !important;
+      line-height: 1.4 !important;
+    }
+
+    .notification-item-time {
+      font-size: 0.7rem !important;
+      color: var(--muted-foreground) !important;
+      opacity: 0.7 !important;
+      margin-top: 0.375rem !important;
+    }
+
+    .notification-empty {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 3rem 1.5rem !important;
+      text-align: center !important;
+      gap: 0.5rem !important;
+    }
+
+    .notification-empty-text {
+      font-size: 0.875rem !important;
+      font-weight: 500 !important;
+      color: var(--muted-foreground) !important;
+    }
+  }
+
   /* Upload Page Styles */
   .upload-dropzone {
     border: 2px dashed var(--border);
@@ -844,6 +1023,7 @@
     justify-content: center;
     padding: 1.25rem;
     transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
   }
 
   .search-result-card:hover .search-result-overlay {
@@ -860,6 +1040,7 @@
     text-decoration: none;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s, background-color 0.2s;
+    pointer-events: auto;
   }
 
   .search-result-link:hover {
