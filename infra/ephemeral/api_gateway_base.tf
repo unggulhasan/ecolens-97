@@ -12,8 +12,8 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   name             = "${var.app_name}-cognito-authorizer"
 
   jwt_configuration {
-    audience = [data.terraform_remote_state.persistent.outputs.cognito_client_id]
-    issuer   = data.terraform_remote_state.persistent.outputs.cognito_issuer
+    audience = [local.persistent_state.cognito_client_id]
+    issuer   = local.persistent_state.cognito_issuer
   }
 }
 

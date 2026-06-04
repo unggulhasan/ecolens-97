@@ -13,7 +13,7 @@ class DecimalEncoder(json.JSONEncoder):
             return int(obj)
         return super().default(obj)
 
-def handler(event, context):
+def handle(event, context):
     # This query requires ML model integration
     # For now returns placeholder — will be completed when ML Lambda is ready
     # Input: file sent as base64 in body
@@ -39,7 +39,9 @@ def handler(event, context):
             item_tags.get(tag, 0) >= 1
             for tag in detected_tags
         )
-        if match:
+        if item.get('file_type') == 'image':
+            matching.append(item.get('thumbnail_url'))
+        else:
             matching.append(item.get('file_url'))
 
     return {

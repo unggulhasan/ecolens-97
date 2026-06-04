@@ -9,7 +9,7 @@ export function SessionWatcher() {
 
   useEffect(() => {
     if (session?.error) {
-      window.location.assign("/api/auth/logout")
+      window.location.assign("/api/auth/federated-logout")
     }
   }, [session?.error])
 

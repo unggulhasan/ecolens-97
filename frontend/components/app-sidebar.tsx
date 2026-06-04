@@ -14,16 +14,16 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { DashboardSquare01Icon, Upload01Icon } from "@hugeicons/core-free-icons"
+import { Search01Icon, Upload01Icon } from "@hugeicons/core-free-icons"
 
 export function AppSidebar() {
   const pathname = usePathname()
 
   const menuItems = [
     {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: DashboardSquare01Icon,
+      title: "Search",
+      url: "/search",
+      icon: Search01Icon,
     },
     {
       title: "Uploads",

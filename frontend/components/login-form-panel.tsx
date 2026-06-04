@@ -15,13 +15,13 @@ type LoginFormPanelProps = {
   redirectTo?: string
 }
 
-export function LoginFormPanel({ redirectTo = "/dashboard" }: LoginFormPanelProps) {
+export function LoginFormPanel({ redirectTo = "/search" }: LoginFormPanelProps) {
   return (
     <div className="auth-form-panel">
       <CardHeader className="auth-form-header">
         <CardTitle className="auth-form-title">Login</CardTitle>
         <CardDescription className="auth-form-description">
-          Sign in to continue to your dashboard.
+          Sign in to continue.
         </CardDescription>
       </CardHeader>
 

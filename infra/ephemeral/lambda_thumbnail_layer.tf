@@ -1,3 +1,9 @@
+locals {
+  ecr_docker_registry = local.persistent_state.ecr_docker_registry
+  thumbnail_image_uri = "${aws_ecr_repository.thumbnail.repository_url}:latest"
+  base_image_uri      = local.persistent_state.base_image_uri
+}
+
 resource "aws_ecr_repository" "thumbnail" {
   name         = "thumbnail"
   force_delete = true
@@ -32,16 +38,10 @@ resource "aws_ecr_repository_policy" "thumbnail" {
   })
 }
 
-locals {
-  ecr_docker_registry = data.terraform_remote_state.persistent.outputs.ecr_docker_registry
-  thumbnail_image_uri = "${aws_ecr_repository.thumbnail.repository_url}:latest"
-  base_image_uri      = data.terraform_remote_state.persistent.outputs.base_image_uri
-}
-
 resource "null_resource" "thumbnail_docker_build_push" {
   triggers = {
-    lambda_function = filesha256("${path.root}/../../functions/thumbnail/lambda_function.py")
-    dockerfile      = filesha256("${path.root}/../../functions/thumbnail/Dockerfile")
+    lambda_function = filesha256("${path.root}/../../functions/on-image-uploaded/handler.py")
+    dockerfile      = filesha256("${path.root}/../../functions/on-image-uploaded/Dockerfile")
   }
 
   provisioner "local-exec" {
@@ -55,7 +55,7 @@ resource "null_resource" "thumbnail_docker_build_push" {
         --push \
         --build-arg BASE_IMAGE_URI=${local.base_image_uri} \
         -t ${local.thumbnail_image_uri} \
-        ${path.root}/../../functions/thumbnail
+        ${path.root}/../../functions/on-image-uploaded
     EOT
   }
 

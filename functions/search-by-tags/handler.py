@@ -12,34 +12,38 @@ class DecimalEncoder(json.JSONEncoder):
             return int(obj)
         return super().default(obj)
 
-def handler(event, context):
-    # Input: {"species": ["dingo"]} or {"species": ["kangaroo", "wombat"]}
+def handle(event, context):
+    # Get tags from request body
+    # Example input: {"kangaroo": 2, "wombat": 1}
     body = json.loads(event.get('body', '{}'))
-    species_list = body.get('species', [])
-
-    if not species_list:
+    
+    if not body:
         return {
             'statusCode': 400,
-            'body': json.dumps({'error': 'No species provided'})
+            'body': json.dumps({'error': 'No tags provided'})
         }
-
+    
+    # Scan the entire table
     response = table.scan()
     items = response['Items']
-
+    
     matching = []
     for item in items:
         item_tags = item.get('tags', {})
-        # Just needs at least 1 of each species — no minimum count
+        
+        # Check ALL requested tags meet minimum count (AND logic)
         match = all(
-            item_tags.get(species, 0) >= 1
-            for species in species_list
+            item_tags.get(tag, 0) >= Decimal(str(count))
+            for tag, count in body.items()
         )
+        
         if match:
+            # Return thumbnail for images, full URL for videos
             if item.get('file_type') == 'image':
                 matching.append(item.get('thumbnail_url'))
             else:
                 matching.append(item.get('file_url'))
-
+    
     return {
         'statusCode': 200,
         'body': json.dumps({'results': matching}, cls=DecimalEncoder)

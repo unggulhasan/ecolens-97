@@ -43,3 +43,44 @@ resource "aws_s3_bucket_notification" "s3_media_notification" {
   bucket      = aws_s3_bucket.s3_media.id
   eventbridge = true
 }
+
+
+resource "aws_s3_bucket_cors_configuration" "s3_media_cors" {
+  bucket = aws_s3_bucket.s3_media.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["PUT", "POST", "GET", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag", "x-amz-checksum-sha256"]
+    max_age_seconds = 3000
+  }
+}
+
+# Deny PutObject unless the request includes If-None-Match: *
+# This ensures objects can only be created, never overwritten.
+resource "aws_s3_bucket_policy" "s3_media" {
+  bucket = aws_s3_bucket.s3_media.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyOverwriteWithoutIfNoneMatch"
+        Effect = "Deny"
+        Principal = {
+          AWS = "*"
+        }
+        Action = "s3:PutObject"
+        Resource = [
+          "${aws_s3_bucket.s3_media.arn}/*"
+        ]
+        Condition = {
+          StringNotEquals = {
+            "s3:if-none-match": "*"
+          }
+        }
+      }
+    ]
+  })
+}

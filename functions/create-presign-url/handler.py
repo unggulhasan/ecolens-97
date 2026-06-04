@@ -1,17 +1,30 @@
 import json
 import os
 import boto3
+import uuid
 
 MEDIA_BUCKET_NAME = os.environ["MEDIA_BUCKET_NAME"]
 REGION_NAME = os.environ.get("REGION_NAME", "ap-southeast-4")
+DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 URL_EXPIRATION = 300
 
 
-def handler(event, context):
+def handle(event, context):
+    # Extract user email from JWT claims injected by API Gateway JWT authorizer
+    claims = (
+        event.get("requestContext", {})
+             .get("authorizer", {})
+             .get("jwt", {})
+             .get("claims", {})
+    )
+    user_email = claims.get("email", "")
+    file_id = str(uuid.uuid4())
+
     body = json.loads(event.get("body", "{}"))
     filename = body.get("filename")
     file_type = body.get("file_type")
     checksum = body.get("checksum")
+    tmp_query = bool(body.get("tmp_query", False))
 
     if not filename:
         return _error(400, "Missing required field: filename")
@@ -20,7 +33,11 @@ def handler(event, context):
     if not checksum:
         return _error(400, "Missing required field: checksum")
 
-    directory = _dir_for(file_type)
+    # Dedup check: reject if checksum already exists in DynamoDB
+    if _checksum_exists(checksum):
+        return _error(409, f"Duplicate file: checksum already exists")
+
+    directory = _dir_for(file_type, file_id, tmp_query)
     if not directory:
         return _error(400, f"Unsupported file_type: {file_type}")
 
@@ -36,8 +53,13 @@ def handler(event, context):
         "Bucket": MEDIA_BUCKET_NAME,
         "Key": key,
         "ContentType": file_type,
-        # "ChecksumAlgorithm": "SHA256",
+        "ChecksumAlgorithm": "SHA256",
         "ChecksumSHA256": checksum,
+        "Metadata": {
+            "user-email": user_email,
+            "file-id": file_id,
+        },
+        "IfNoneMatch": "*",
     }
 
     try:
@@ -56,15 +78,30 @@ def handler(event, context):
             "url": url,
             "key": key,
             "expires_in": URL_EXPIRATION,
+            "user_email": user_email,
+            "file_id": file_id,
         }),
     }
 
 
-def _dir_for(file_type):
+def _checksum_exists(checksum: str) -> bool:
+    dynamodb = boto3.client("dynamodb", region_name=REGION_NAME)
+    response = dynamodb.query(
+        TableName=DYNAMODB_TABLE_NAME,
+        IndexName="checksum-gsi",
+        KeyConditionExpression="checksum = :cs",
+        ExpressionAttributeValues={":cs": {"S": checksum}},
+        Limit=1,
+    )
+    return response.get("Count", 0) > 0
+
+
+def _dir_for(file_type, file_id, tmp=False):
+    prefix = "tmp/" if tmp else ""
     if file_type.startswith("video/"):
-        return "videos"
+        return f"{prefix}videos/{file_id}"
     if file_type.startswith("image/"):
-        return "images"
+        return f"{prefix}images/{file_id}"
     return None
 
 

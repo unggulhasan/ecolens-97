@@ -1,7 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { signIn, signOut } from "@/auth"
+import { auth, signIn, signOut } from "@/auth"
 import { getAuthBaseUrl, getCognitoLogoutUrl } from "@/lib/cognito"
 
 import { CognitoIdentityProviderClient, AdminCreateUserCommand } from "@aws-sdk/client-cognito-identity-provider"
@@ -28,11 +28,11 @@ function getUserPoolId() {
   return parts[parts.length - 1]
 }
 
-export async function signInWithCognito(redirectTo = "/dashboard") {
+export async function signInWithCognito(redirectTo = "/search") {
   await signIn("cognito", { redirectTo })
 }
 
-export async function signUpWithCognito(redirectTo = "/dashboard") {
+export async function signUpWithCognito(redirectTo = "/search") {
   await signIn("cognito-signup", { redirectTo })
 }
 
