@@ -1,6 +1,7 @@
 from google.cloud import storage
 import os
 import torch
+from megadetector.detection.run_detector import load_detector
 
 # directqory to download the model files from GCS to the local file system of the Cloud Run container.
 MODEL_DIR = "/tmp/models"
@@ -24,6 +25,7 @@ SPECIES_CLASSES = ['Alectura_lathami', 'Antechinus_agilis', 'Bos_taurus', 'Burhi
 # cacheing the loaded model objects in memory.
 species_model = None
 common_name_lookup = None
+megadetector_model = None
 
 
 def download_blob_if_missing(bucket, file_name: str) -> str:
@@ -194,3 +196,12 @@ def get_megadetector_model_path() -> str:
     """
     model_paths = download_models()
     return model_paths["megadetector_model"]
+
+
+def get_megadetector_model():
+    global megadetector_model
+    if megadetector_model is None:
+        megadetector_model_path = get_megadetector_model_path()
+        megadetector_model = load_detector(megadetector_model_path)
+
+    return megadetector_model

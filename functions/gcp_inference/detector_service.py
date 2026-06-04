@@ -3,8 +3,8 @@ import uuid
 from pathlib import Path
 from PIL import Image
 
-from model_loader import get_megadetector_model_path
-from megadetector.detection import run_detector_batch
+from model_loader import get_megadetector_model
+from megadetector.visualization import visualization_utils as vis_utils
 
 # used to store cropped animal images temporarily.
 CROP_DIR = "/tmp/crops"
@@ -18,23 +18,14 @@ def run_megadetector(local_image_path: str) -> list[dict]:
     MegaDetector detects animal bounding boxes.
     """
 
-    model_path = get_megadetector_model_path()
+    detector = get_megadetector_model()
 
-    # for test purposes.
-    print("Running MegaDetector...")
-    print("Input image path:", local_image_path)
-    print("MegaDetector model path:", model_path)
+    # since the megadetector library's generate_detections_one_image function expects a numpy array image,
+    # load the image with vis_utils.load_image() instead of PIL.Image.open() here.
+    image = vis_utils.load_image(local_image_path)
 
-    results = run_detector_batch.load_and_run_detector_batch(
-    image_file_names=[local_image_path],
-    model_file=model_path
-    )
-
-    # for test purposes.
-    print("MegaDetector result type:", type(results))
-    print("MegaDetector raw result:", results)
-
-    return results
+    results = detector.generate_detections_one_image(image, local_image_path)
+    return [results]
 
 
 def crop_detected_animals(local_image_path: str, detections: list[dict]) -> list[str]:

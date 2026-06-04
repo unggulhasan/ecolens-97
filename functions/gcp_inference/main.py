@@ -2,7 +2,6 @@ import functions_framework
 
 from inference_service import perform_inference
 from gcs_service import download_gcs_file, cleanup_file
-from model_loader import download_models, load_species_model
 
 
 # enpoint receives the GCS URI of the image/frame to be processed.
