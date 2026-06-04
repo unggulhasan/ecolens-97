@@ -1,7 +1,5 @@
-fastapi
-uvicorn[standard]
+functions-framework
 requests
-pydantic
 google-cloud-storage
 pillow
 numpy

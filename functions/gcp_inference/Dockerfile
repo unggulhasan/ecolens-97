@@ -21,4 +21,4 @@ RUN python -m pip install --no-cache-dir onnx2torch --no-deps
 
 COPY . .
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["functions-framework", "--target=infer", "--host=0.0.0.0", "--port=8080"]
