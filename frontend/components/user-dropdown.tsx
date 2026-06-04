@@ -26,6 +26,7 @@ export function UserDropdown({ user }: UserDropdownProps) {
   }, [])
 
   const displayName = user.name || user.email?.split("@")[0] || "User"
+  const firstChar = displayName.charAt(0).toUpperCase()
 
   return (
     <div className="user-dropdown-container" ref={dropdownRef}>
@@ -35,6 +36,7 @@ export function UserDropdown({ user }: UserDropdownProps) {
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
+        <div className="user-dropdown-avatar">{firstChar}</div>
         <span>{displayName}</span>
         <svg
           className={`user-dropdown-arrow ${isOpen ? "open" : ""}`}
