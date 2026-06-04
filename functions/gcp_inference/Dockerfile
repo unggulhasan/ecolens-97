@@ -15,12 +15,6 @@ RUN python -m pip install --upgrade pip setuptools wheel
 
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
-RUN python -m pip install --no-cache-dir megadetector tqdm
-
-RUN python -m pip install --no-cache-dir --only-binary=:all: "onnx>=1.18.0"
-
-RUN python -m pip install --no-cache-dir onnx2torch
-
 COPY . .
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

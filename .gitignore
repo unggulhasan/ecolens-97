@@ -25,3 +25,9 @@ override.tf.json
 ml_models/*.pt
 ml_models/*.txt
 ml_models/*.jpg
+
+# Python
+.venv/
+**/.venv/
+__pycache__/
+*.py[cod]
