@@ -12,7 +12,7 @@ class DecimalEncoder(json.JSONEncoder):
             return int(obj)
         return super().default(obj)
 
-def handler(event, context):
+def handle(event, context):
     # Write a test record
     table.put_item(Item={
         'file_url': 's3://test-bucket/test-image.jpg',

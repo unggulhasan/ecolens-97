@@ -1,13 +1,13 @@
 data "archive_file" "lambda_hello" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/hello"
-  output_path = "${path.root}/build/lambda_hello.zip"
+  source_dir  = "${path.root}/../../functions/health"
+  output_path = "${path.root}/build/lambda_health.zip"
 }
 
 resource "aws_lambda_function" "hello" {
-  function_name = "${var.app_name}-${var.environment}-hello"
+  function_name = "${var.app_name}-${var.environment}-health"
   role          = aws_iam_role.lambda_exec_role_hello.arn
-  handler       = "lambda_function.handler"
+  handler       = "handler.handle"
   runtime       = "python3.11"
 
   filename         = data.archive_file.lambda_hello.output_path
@@ -17,7 +17,7 @@ resource "aws_lambda_function" "hello" {
 }
 
 resource "aws_iam_role" "lambda_exec_role_hello" {
-  name = "${var.app_name}-${var.environment}-hello"
+  name = "${var.app_name}-${var.environment}-health"
 
   assume_role_policy = local.assume_role_policy_json
 

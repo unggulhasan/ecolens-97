@@ -1,6 +1,6 @@
 # Trigger thumbnail Lambda from S3 Object Created events delivered via EventBridge.
 resource "aws_cloudwatch_event_rule" "trigger_thumbnail" {
-  name        = "${var.app_name}-${var.environment}-thumbnail-s3-created"
+  name        = "${var.app_name}-${var.environment}-on-image-uploaded-s3-created"
   description = "Trigger thumbnail Lambda when an object is created in the images/ prefix."
 
   event_pattern = jsonencode({
@@ -34,7 +34,7 @@ resource "aws_lambda_permission" "thumbnail_eventbridge" {
 
 # Trigger metadata Lambda when a thumbnail lands in the thumbnails/ prefix.
 resource "aws_cloudwatch_event_rule" "trigger_metadata" {
-  name        = "${var.app_name}-${var.environment}-metadata-thumb-created"
+  name        = "${var.app_name}-${var.environment}-on-thumbnail-created-thumb-created"
   description = "Trigger metadata Lambda when a thumbnail is written to the thumbnails/ prefix."
 
   event_pattern = jsonencode({

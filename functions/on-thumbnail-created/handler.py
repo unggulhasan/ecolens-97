@@ -55,7 +55,10 @@ def _write_record(bucket: str, thumb_key: str, meta: dict) -> None:
         "user_id": meta["user_id"],
     }
 
-    table.put_item(Item=item)
+    table.put_item(
+        Item=item,
+        ConditionExpression="attribute_not_exists(file_id)",
+    )
     logger.info(
         "DynamoDB record written: file_id=%s user=%s thumb=%s",
         item["file_id"],
@@ -64,7 +67,7 @@ def _write_record(bucket: str, thumb_key: str, meta: dict) -> None:
     )
 
 
-def handler(event, context):
+def handle(event, context):
     logger.info("Received event: %s", json.dumps(event))
 
     detail = event.get("detail", {})
@@ -85,9 +88,11 @@ def handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "thumbnail_key": decoded_key,
-            "file_id": meta["file_id"],
-            "user_id": meta["user_id"],
-        }),
+        "body": json.dumps(
+            {
+                "thumbnail_key": decoded_key,
+                "file_id": meta["file_id"],
+                "user_id": meta["user_id"],
+            }
+        ),
     }

@@ -1,8 +1,8 @@
 # ------------------------------ TABLE ------------------------------------------
 resource "aws_dynamodb_table" "media_files" {
-  name         = "${var.app_name}-${var.environment}-media"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "file_id"
+  name           = "${var.app_name}-${var.environment}-media"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "file_id"
 
   attribute {
     name = "file_id"
@@ -69,7 +69,7 @@ resource "aws_iam_policy" "s3_delete_access" {
 # ------------------------------ QUERY TEST LAMBDA ------------------------------
 data "archive_file" "lambda_query_test" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/query_test"
+  source_dir  = "${path.root}/../../functions/query-test"
   output_path = "${path.root}/build/lambda_query_test.zip"
 }
 
@@ -87,7 +87,7 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_test_basic" {
 resource "aws_lambda_function" "query_test" {
   function_name    = "${var.app_name}-${var.environment}-query-test"
   role             = aws_iam_role.lambda_exec_query_test.arn
-  handler          = "lambda_function.handler"
+  handler          = "handler.handle"
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_query_test.output_path
   source_code_hash = data.archive_file.lambda_query_test.output_base64sha256
@@ -98,12 +98,12 @@ resource "aws_lambda_function" "query_test" {
 # ------------------------------ QUERY 1 — tags count --------------------------
 data "archive_file" "lambda_query_1" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/q1_tags_count"
+  source_dir  = "${path.root}/../../functions/search-by-tags"
   output_path = "${path.root}/build/lambda_query_1.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_1" {
-  name               = "${var.app_name}-${var.environment}-query-1"
+  name               = "${var.app_name}-${var.environment}-search-by-tags"
   assume_role_policy = local.assume_role_policy_json
   tags               = local.common_tags
 }
@@ -119,9 +119,9 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_1_dynamodb" {
 }
 
 resource "aws_lambda_function" "query_1" {
-  function_name    = "${var.app_name}-${var.environment}-query-1"
+  function_name    = "${var.app_name}-${var.environment}-search-by-tags"
   role             = aws_iam_role.lambda_exec_query_1.arn
-  handler          = "lambda_function.handler"
+  handler          = "handler.handle"
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_query_1.output_path
   source_code_hash = data.archive_file.lambda_query_1.output_base64sha256
@@ -146,7 +146,7 @@ resource "aws_apigatewayv2_integration" "query_1" {
 
 resource "aws_apigatewayv2_route" "query_1" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "POST /query-1"
+  route_key          = "POST /search-by-tags"
   target             = "integrations/${aws_apigatewayv2_integration.query_1.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -164,12 +164,12 @@ resource "aws_lambda_permission" "query_1" {
 # ------------------------------ QUERY 2 — species -----------------------------
 data "archive_file" "lambda_query_2" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/q2_species"
+  source_dir  = "${path.root}/../../functions/search-by-species"
   output_path = "${path.root}/build/lambda_query_2.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_2" {
-  name               = "${var.app_name}-${var.environment}-query-2"
+  name               = "${var.app_name}-${var.environment}-search-by-species"
   assume_role_policy = local.assume_role_policy_json
   tags               = local.common_tags
 }
@@ -185,9 +185,9 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_2_dynamodb" {
 }
 
 resource "aws_lambda_function" "query_2" {
-  function_name    = "${var.app_name}-${var.environment}-query-2"
+  function_name    = "${var.app_name}-${var.environment}-search-by-species"
   role             = aws_iam_role.lambda_exec_query_2.arn
-  handler          = "lambda_function.handler"
+  handler          = "handler.handle"
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_query_2.output_path
   source_code_hash = data.archive_file.lambda_query_2.output_base64sha256
@@ -212,7 +212,7 @@ resource "aws_apigatewayv2_integration" "query_2" {
 
 resource "aws_apigatewayv2_route" "query_2" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "POST /query-2"
+  route_key          = "POST /search-by-species"
   target             = "integrations/${aws_apigatewayv2_integration.query_2.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -230,12 +230,12 @@ resource "aws_lambda_permission" "query_2" {
 # ------------------------------ QUERY 3 — thumbnail ---------------------------
 data "archive_file" "lambda_query_3" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/q3_thumbnail"
+  source_dir  = "${path.root}/../../functions/lookup-by-thumbnail"
   output_path = "${path.root}/build/lambda_query_3.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_3" {
-  name               = "${var.app_name}-${var.environment}-query-3"
+  name               = "${var.app_name}-${var.environment}-lookup-by-thumbnail"
   assume_role_policy = local.assume_role_policy_json
   tags               = local.common_tags
 }
@@ -251,9 +251,9 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_3_dynamodb" {
 }
 
 resource "aws_lambda_function" "query_3" {
-  function_name    = "${var.app_name}-${var.environment}-query-3"
+  function_name    = "${var.app_name}-${var.environment}-lookup-by-thumbnail"
   role             = aws_iam_role.lambda_exec_query_3.arn
-  handler          = "lambda_function.handler"
+  handler          = "handler.handle"
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_query_3.output_path
   source_code_hash = data.archive_file.lambda_query_3.output_base64sha256
@@ -278,7 +278,7 @@ resource "aws_apigatewayv2_integration" "query_3" {
 
 resource "aws_apigatewayv2_route" "query_3" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "POST /query-3"
+  route_key          = "POST /lookup-by-thumbnail"
   target             = "integrations/${aws_apigatewayv2_integration.query_3.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -296,12 +296,12 @@ resource "aws_lambda_permission" "query_3" {
 # ------------------------------ QUERY 4 — file tags ---------------------------
 data "archive_file" "lambda_query_4" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/q4_file_tags"
+  source_dir  = "${path.root}/../../functions/detect-image-tags"
   output_path = "${path.root}/build/lambda_query_4.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_4" {
-  name               = "${var.app_name}-${var.environment}-query-4"
+  name               = "${var.app_name}-${var.environment}-detect-image-tags"
   assume_role_policy = local.assume_role_policy_json
   tags               = local.common_tags
 }
@@ -317,9 +317,9 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_dynamodb" {
 }
 
 resource "aws_lambda_function" "query_4" {
-  function_name    = "${var.app_name}-${var.environment}-query-4"
+  function_name    = "${var.app_name}-${var.environment}-detect-image-tags"
   role             = aws_iam_role.lambda_exec_query_4.arn
-  handler          = "lambda_function.handler"
+  handler          = "handler.handle"
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_query_4.output_path
   source_code_hash = data.archive_file.lambda_query_4.output_base64sha256
@@ -345,7 +345,7 @@ resource "aws_apigatewayv2_integration" "query_4" {
 
 resource "aws_apigatewayv2_route" "query_4" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "POST /query-4"
+  route_key          = "POST /detect-image-tags"
   target             = "integrations/${aws_apigatewayv2_integration.query_4.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -363,12 +363,12 @@ resource "aws_lambda_permission" "query_4" {
 # ------------------------------ QUERY 5 — tags update -------------------------
 data "archive_file" "lambda_query_5" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/q5_tags_update"
+  source_dir  = "${path.root}/../../functions/update-file-tags"
   output_path = "${path.root}/build/lambda_query_5.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_5" {
-  name               = "${var.app_name}-${var.environment}-query-5"
+  name               = "${var.app_name}-${var.environment}-update-file-tags"
   assume_role_policy = local.assume_role_policy_json
   tags               = local.common_tags
 }
@@ -384,9 +384,9 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_5_dynamodb" {
 }
 
 resource "aws_lambda_function" "query_5" {
-  function_name    = "${var.app_name}-${var.environment}-query-5"
+  function_name    = "${var.app_name}-${var.environment}-update-file-tags"
   role             = aws_iam_role.lambda_exec_query_5.arn
-  handler          = "lambda_function.handler"
+  handler          = "handler.handle"
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_query_5.output_path
   source_code_hash = data.archive_file.lambda_query_5.output_base64sha256
@@ -411,7 +411,7 @@ resource "aws_apigatewayv2_integration" "query_5" {
 
 resource "aws_apigatewayv2_route" "query_5" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "POST /query-5"
+  route_key          = "POST /update-file-tags"
   target             = "integrations/${aws_apigatewayv2_integration.query_5.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
@@ -429,12 +429,12 @@ resource "aws_lambda_permission" "query_5" {
 # ------------------------------ QUERY 6 — delete ------------------------------
 data "archive_file" "lambda_query_6" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/q6_delete"
+  source_dir  = "${path.root}/../../functions/delete-media"
   output_path = "${path.root}/build/lambda_query_6.zip"
 }
 
 resource "aws_iam_role" "lambda_exec_query_6" {
-  name               = "${var.app_name}-${var.environment}-query-6"
+  name               = "${var.app_name}-${var.environment}-delete-media"
   assume_role_policy = local.assume_role_policy_json
   tags               = local.common_tags
 }
@@ -456,9 +456,9 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_6_s3" {
 }
 
 resource "aws_lambda_function" "query_6" {
-  function_name    = "${var.app_name}-${var.environment}-query-6"
+  function_name    = "${var.app_name}-${var.environment}-delete-media"
   role             = aws_iam_role.lambda_exec_query_6.arn
-  handler          = "lambda_function.handler"
+  handler          = "handler.handle"
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_query_6.output_path
   source_code_hash = data.archive_file.lambda_query_6.output_base64sha256
@@ -483,7 +483,7 @@ resource "aws_apigatewayv2_integration" "query_6" {
 
 resource "aws_apigatewayv2_route" "query_6" {
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "POST /query-6"
+  route_key          = "POST /delete-media"
   target             = "integrations/${aws_apigatewayv2_integration.query_6.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id

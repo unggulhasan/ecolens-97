@@ -4,14 +4,14 @@
 
 data "archive_file" "lambda_metadata" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/metadata"
+  source_dir  = "${path.root}/../../functions/on-thumbnail-created"
   output_path = "${path.root}/build/lambda_metadata.zip"
 }
 
 resource "aws_lambda_function" "metadata" {
-  function_name    = "${var.app_name}-${var.environment}-metadata"
+  function_name    = "${var.app_name}-${var.environment}-on-thumbnail-created"
   role             = aws_iam_role.metadata_exec.arn
-  handler          = "lambda_function.handler"
+  handler          = "handler.handle"
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_metadata.output_path
   source_code_hash = data.archive_file.lambda_metadata.output_base64sha256
@@ -30,7 +30,7 @@ resource "aws_lambda_function" "metadata" {
 }
 
 resource "aws_iam_role" "metadata_exec" {
-  name               = "${var.app_name}-${var.environment}-metadata"
+  name               = "${var.app_name}-${var.environment}-on-thumbnail-created"
   assume_role_policy = local.assume_role_policy_json
   tags               = local.common_tags
 }
@@ -41,7 +41,7 @@ resource "aws_iam_role_policy_attachment" "metadata_exec_basic" {
 }
 
 resource "aws_iam_role_policy" "metadata_s3_dynamo" {
-  name = "${var.app_name}-${var.environment}-metadata-s3-dynamo"
+  name = "${var.app_name}-${var.environment}-on-thumbnail-created-s3-dynamo"
   role = aws_iam_role.metadata_exec.name
 
   policy = jsonencode({
@@ -50,7 +50,9 @@ resource "aws_iam_role_policy" "metadata_s3_dynamo" {
       {
         Sid      = "ReadThumbnailMetadata"
         Effect   = "Allow"
-        Action   = ["s3:HeadObject"]
+        # HeadObject API call requires s3:GetObject in IAM, not s3:HeadObject.
+        # s3:HeadObject does not exist as a separate IAM action.
+        Action   = ["s3:GetObject"]
         Resource = "arn:aws:s3:::${local.persistent_state.media_bucket_name}/thumbnails/*"
       },
       {

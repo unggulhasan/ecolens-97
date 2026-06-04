@@ -1,14 +1,15 @@
 data "archive_file" "lambda_presign" {
   type        = "zip"
-  source_dir  = "${path.root}/../../functions/presign"
+  source_dir  = "${path.root}/../../functions/create-presign-url"
   output_path = "${path.root}/build/lambda_presign.zip"
 }
 
 resource "aws_lambda_function" "presign" {
-  function_name = "${var.app_name}-${var.environment}-presign"
+  function_name = "${var.app_name}-${var.environment}-create-presign-url"
   role          = aws_iam_role.lambda_exec_role_presign.arn
-  handler       = "lambda_function.handler"
+  handler       = "handler.handle"
   runtime       = "python3.11"
+  timeout       = 10
 
   filename         = data.archive_file.lambda_presign.output_path
   source_code_hash = data.archive_file.lambda_presign.output_base64sha256
@@ -25,7 +26,7 @@ resource "aws_lambda_function" "presign" {
 }
 
 resource "aws_iam_role" "lambda_exec_role_presign" {
-  name = "${var.app_name}-${var.environment}-presign"
+  name = "${var.app_name}-${var.environment}-create-presign-url"
 
   assume_role_policy = local.assume_role_policy_json
 

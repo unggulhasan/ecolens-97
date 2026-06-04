@@ -1,6 +1,7 @@
 import json
 import boto3
 import os
+import base64
 from decimal import Decimal
 
 dynamodb = boto3.resource('dynamodb', region_name=os.environ['AWS_REGION_NAME'])
@@ -12,33 +13,36 @@ class DecimalEncoder(json.JSONEncoder):
             return int(obj)
         return super().default(obj)
 
-def handler(event, context):
-    # Input: {"species": ["dingo"]} or {"species": ["kangaroo", "wombat"]}
+def handle(event, context):
+    # This query requires ML model integration
+    # For now returns placeholder — will be completed when ML Lambda is ready
+    # Input: file sent as base64 in body
     body = json.loads(event.get('body', '{}'))
-    species_list = body.get('species', [])
+    
+    # Placeholder tags — in real implementation these come from ML model
+    detected_tags = body.get('tags', [])
 
-    if not species_list:
+    if not detected_tags:
         return {
             'statusCode': 400,
-            'body': json.dumps({'error': 'No species provided'})
+            'body': json.dumps({'error': 'No tags detected or provided'})
         }
 
+    # Scan DB for files matching detected tags
     response = table.scan()
     items = response['Items']
 
     matching = []
     for item in items:
         item_tags = item.get('tags', {})
-        # Just needs at least 1 of each species — no minimum count
         match = all(
-            item_tags.get(species, 0) >= 1
-            for species in species_list
+            item_tags.get(tag, 0) >= 1
+            for tag in detected_tags
         )
-        if match:
-            if item.get('file_type') == 'image':
-                matching.append(item.get('thumbnail_url'))
-            else:
-                matching.append(item.get('file_url'))
+        if item.get('file_type') == 'image':
+            matching.append(item.get('thumbnail_url'))
+        else:
+            matching.append(item.get('file_url'))
 
     return {
         'statusCode': 200,

@@ -18,7 +18,7 @@ def extract_file_id(url):
     return parts[1]
 
 
-def handler(event, context):
+def handle(event, context):
     try:
         body = json.loads(event.get('body', '{}'))
     except json.JSONDecodeError:

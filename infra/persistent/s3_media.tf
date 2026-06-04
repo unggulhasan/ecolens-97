@@ -44,13 +44,14 @@ resource "aws_s3_bucket_notification" "s3_media_notification" {
   eventbridge = true
 }
 
+
 resource "aws_s3_bucket_cors_configuration" "s3_media_cors" {
   bucket = aws_s3_bucket.s3_media.id
 
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "POST", "GET", "HEAD"]
-    allowed_origins = ["http://localhost:3000"]
+    allowed_origins = ["*"]
     expose_headers  = ["ETag", "x-amz-checksum-sha256"]
     max_age_seconds = 3000
   }
