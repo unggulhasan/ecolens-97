@@ -50,3 +50,36 @@ resource "google_cloud_run_v2_service" "inference" {
   }
 
 }
+
+resource "google_cloud_run_v2_service" "orchestrator" {
+  name     = "${var.app_name}-${var.environment}-orchestrator"
+  location = var.gcp_region
+
+  ingress = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    service_account = google_service_account.orchestrator_runtime.email
+
+    containers {
+      image = "australia-southeast1-docker.pkg.dev/${var.gcp_project_id}/ecolens-repo/ecolens-orchestrator:latest"
+
+      ports {
+        container_port = 8080
+      }
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
+    }
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 2
+    }
+
+    max_instance_request_concurrency = 10
+  }
+}
