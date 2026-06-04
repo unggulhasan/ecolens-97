@@ -28,6 +28,9 @@ const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 export function SearchContainer() {
   const [activeTab, setActiveTab] = React.useState<string>("tags-count")
   
+  // Ref to track the next unique ID for tag rows to avoid collisions when rows are deleted/added
+  const nextRowIdRef = React.useRef<number>(2)
+
   // Tab 1: Tags with Minimum Count state
   const [tagsCount, setTagsCount] = React.useState<TagCountInput[]>([
     { id: "1", tag: "", count: 1 },
@@ -66,7 +69,8 @@ export function SearchContainer() {
 
   // Handle adding/removing tag inputs for Tab 1
   const addTagRow = () => {
-    const nextId = (tagsCount.length + 1).toString()
+    const nextId = nextRowIdRef.current.toString()
+    nextRowIdRef.current += 1
     setTagsCount([...tagsCount, { id: nextId, tag: "", count: 1 }])
   }
 
