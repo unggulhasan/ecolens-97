@@ -59,6 +59,7 @@ def handle(event, context):
             "user-email": user_email,
             "file-id": file_id,
         },
+        "IfNoneMatch": "*",
     }
 
     try:

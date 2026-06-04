@@ -56,3 +56,31 @@ resource "aws_s3_bucket_cors_configuration" "s3_media_cors" {
     max_age_seconds = 3000
   }
 }
+
+# Deny PutObject unless the request includes If-None-Match: *
+# This ensures objects can only be created, never overwritten.
+resource "aws_s3_bucket_policy" "s3_media" {
+  bucket = aws_s3_bucket.s3_media.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyOverwriteWithoutIfNoneMatch"
+        Effect = "Deny"
+        Principal = {
+          AWS = "*"
+        }
+        Action = "s3:PutObject"
+        Resource = [
+          "${aws_s3_bucket.s3_media.arn}/*"
+        ]
+        Condition = {
+          StringNotEquals = {
+            "s3:if-none-match": "*"
+          }
+        }
+      }
+    ]
+  })
+}
