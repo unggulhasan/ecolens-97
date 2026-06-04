@@ -15,6 +15,8 @@ RUN python -m pip install --upgrade pip setuptools wheel
 
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
+RUN python -m pip install --no-cache-dir --only-binary=:all: --no-deps "onnx==1.16.2"
+
 RUN python -m pip install --no-cache-dir onnx2torch --no-deps
 
 COPY . .
