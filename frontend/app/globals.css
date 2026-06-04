@@ -975,7 +975,7 @@
     }
 
     .authWelcomePanel {
-      @apply flex h-full min-h-0 flex-col justify-center bg-gradient-to-br from-emerald-800 via-emerald-700 to-emerald-600 p-8 md:p-10 text-white;
+      @apply flex h-full min-h-0 flex-col justify-center bg-gradient-to-br from-primary to-emerald-700 p-8 md:p-10 text-white;
     }
 
     .authWelcomeHeader {

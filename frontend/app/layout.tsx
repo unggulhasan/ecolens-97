@@ -1,10 +1,10 @@
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google"
 
-import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { SessionProvider } from "@/components/session-provider"
 import { SessionWatcher } from "@/components/session-watcher"
 import { cn } from "@/lib/utils"
+import "./globals.css"
 
 const spaceGrotesk = Space_Grotesk({subsets:['latin'],variable:'--font-sans'})
 
