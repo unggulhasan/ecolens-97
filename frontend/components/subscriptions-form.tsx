@@ -4,55 +4,91 @@ import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { subscribeToTag, getSubscriptionStatus } from "@/lib/subscription-actions"
+import { subscribeToTag, listSubscriptions, unsubscribeEmail } from "@/lib/subscription-actions"
 
 type SubscriptionsFormProps = {
   initialEmail?: string | null
 }
 
+type SubscriptionItem = {
+  email: string
+  status: "verified" | "pending"
+  tags: string[]
+}
+
 export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
+  const [subscriptions, setSubscriptions] = React.useState<SubscriptionItem[]>([])
   const [email, setEmail] = React.useState(initialEmail || "")
   const [tagsString, setTagsString] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [checkingStatus, setCheckingStatus] = React.useState(false)
-  const [status, setStatus] = React.useState<"verified" | "pending" | "not_subscribed" | "idle">("idle")
+  const [isEditing, setIsEditing] = React.useState(false)
+  
   const [error, setError] = React.useState<string | null>(null)
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
 
-  // Fetch subscription status on load or email change
-  const fetchStatus = React.useCallback(async (emailToCheck: string) => {
-    if (!emailToCheck.trim()) return
+  // Fetch subscription list
+  const fetchSubscriptions = React.useCallback(async () => {
     setCheckingStatus(true)
     setError(null)
     try {
-      const data = await getSubscriptionStatus(emailToCheck.trim())
-      setStatus(data.status)
-      if (data.status === "verified" && data.tags) {
-        setTagsString(data.tags.join(", "))
-      } else {
-        setTagsString("")
-      }
+      const list = await listSubscriptions()
+      setSubscriptions(list)
     } catch (err: any) {
-      console.error("Error fetching subscription status:", err)
-      setStatus("not_subscribed")
+      console.error("Error fetching subscriptions:", err)
+      setError("Failed to load subscription list. Make sure the API is available.")
     } finally {
       setCheckingStatus(false)
     }
   }, [])
 
   React.useEffect(() => {
-    if (initialEmail) {
-      fetchStatus(initialEmail)
-    }
-  }, [initialEmail, fetchStatus])
+    fetchSubscriptions()
+  }, [fetchSubscriptions])
 
-  const handleCheckStatus = () => {
-    if (!email.trim()) {
-      setError("Please enter an email address to check.")
-      return
-    }
+  const handleRefresh = () => {
     setSuccessMessage(null)
-    fetchStatus(email)
+    fetchSubscriptions()
+  }
+
+  const handleEdit = (sub: SubscriptionItem) => {
+    setEmail(sub.email)
+    setTagsString(sub.tags.join(", "))
+    setIsEditing(true)
+    setError(null)
+    setSuccessMessage(null)
+  }
+
+  const handleCancelEdit = () => {
+    setEmail(initialEmail || "")
+    setTagsString("")
+    setIsEditing(false)
+    setError(null)
+    setSuccessMessage(null)
+  }
+
+  const handleDelete = async (emailToDelete: string) => {
+    setError(null)
+    setSuccessMessage(null)
+    setLoading(true)
+    
+    try {
+      await unsubscribeEmail(emailToDelete)
+      setSuccessMessage(`Successfully unsubscribed ${emailToDelete}.`)
+      await fetchSubscriptions()
+      
+      // If we were editing this email, reset the form
+      if (email === emailToDelete) {
+        setEmail(initialEmail || "")
+        setTagsString("")
+        setIsEditing(false)
+      }
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || `Failed to unsubscribe ${emailToDelete}.`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,7 +102,7 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
     }
 
     if (!tagsString.trim()) {
-      setError("Please specify at least one species tag to subscribe to.")
+      setError("Please specify at least one species tag.")
       return
     }
 
@@ -85,18 +121,21 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
       const result = await subscribeToTag(email.trim(), tags)
       
       if (result.status === "verified") {
-        setSuccessMessage(`Subscription updated successfully! Subscribed tags: ${tags.join(", ")}`)
-        setStatus("verified")
+        setSuccessMessage(`Subscription details successfully saved for ${email.trim()}!`)
       } else {
         setSuccessMessage(
           `Subscription requested! AWS has sent a confirmation email to ${email.trim()}. ` +
-          `Please check your inbox (and spam folder) and click the link in that email to confirm your subscription.`
+          `Please check your inbox (including spam) and click "Confirm Subscription" to activate alerts.`
         )
-        setStatus("pending")
       }
       
-      // Sync status from AWS
-      fetchStatus(email.trim())
+      // Reset form fields
+      setEmail(initialEmail || "")
+      setTagsString("")
+      setIsEditing(false)
+      
+      // Refresh list to show updated state
+      await fetchSubscriptions()
     } catch (err: any) {
       console.error(err)
       setError(err.message || "An error occurred while creating subscription.")
@@ -106,152 +145,230 @@ export function SubscriptionsForm({ initialEmail }: SubscriptionsFormProps) {
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Subscribe to Wildlife Alerts</CardTitle>
-        <CardDescription>
-          Receive email notifications when new images or videos with specific species are uploaded or updated.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center">
-              <label htmlFor="sub-email" className="text-sm font-semibold text-foreground">
-                Email Address
-              </label>
-              
-              {/* Display Status Badge */}
-              <div className="flex items-center gap-2">
-                {checkingStatus && (
-                  <span className="text-xs text-muted-foreground animate-pulse">Checking status...</span>
-                )}
-                
-                {!checkingStatus && status === "verified" && (
-                  <div className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <svg className="size-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Email Verified</span>
-                  </div>
-                )}
-                
-                {!checkingStatus && status === "pending" && (
-                  <div className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    <svg className="size-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span>Pending Verification</span>
-                  </div>
-                )}
-                
-                {!checkingStatus && status === "not_subscribed" && (
-                  <div className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground border border-border">
-                    <span>Not Subscribed</span>
-                  </div>
-                )}
-              </div>
+    <div className="space-y-6">
+      
+      {/* 1. Subscriptions List */}
+      <Card className="w-full">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
+          <div>
+            <CardTitle>Active Subscriptions</CardTitle>
+            <CardDescription>
+              Emails currently configured to receive species notifications.
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={checkingStatus || loading}
+          >
+            {checkingStatus ? (
+              <svg className="upload-spinner size-3 mr-1" fill="none" viewBox="0 0 24 24">
+                <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : (
+              <svg className="size-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            )}
+            Refresh Status
+          </Button>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {checkingStatus && subscriptions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <svg className="upload-spinner size-6 text-primary" fill="none" viewBox="0 0 24 24">
+                <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <p className="text-sm text-muted-foreground">Checking subscription statuses...</p>
             </div>
+          ) : subscriptions.length > 0 ? (
+            <div className="divide-y divide-border">
+              {subscriptions.map((sub) => (
+                <div key={sub.email} className="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-4 first:pt-0 last:pb-0">
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm truncate">{sub.email}</span>
+                      
+                      {sub.status === "verified" ? (
+                        <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          <svg className="size-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          <svg className="size-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Pending
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Tags List */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                      {sub.tags.length > 0 ? (
+                        sub.tags.map((tag) => (
+                          <span key={tag} className="inline-block text-[10px] font-bold uppercase tracking-wider bg-secondary text-secondary-foreground border px-2 py-0.5 rounded">
+                            {tag}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">No tags selected (alerts disabled)</span>
+                      )}
+                    </div>
+                  </div>
 
-            <div className="flex gap-2">
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEdit(sub)}
+                      disabled={loading || checkingStatus}
+                    >
+                      Edit Tags
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDelete(sub.email)}
+                      disabled={loading || checkingStatus}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 text-center gap-2 border border-dashed rounded-lg bg-muted/20">
+              <svg className="size-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <h3 className="font-semibold text-sm">No notifications configured</h3>
+              <p className="text-xs text-muted-foreground max-w-xs">
+                You haven't configured any email subscriptions yet. Add an email below to get started.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 2. Add / Edit Subscription Form */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>{isEditing ? "Edit Subscription Tags" : "Add Email Subscription"}</CardTitle>
+          <CardDescription>
+            {isEditing 
+              ? `Modify the target tags for ${email}. Updates apply instantly.` 
+              : "Subscribe an email address to receive alerts for specific wildlife species."
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="sub-email" className="text-sm font-semibold text-foreground">
+                Notification Email Address
+              </label>
               <Input
                 id="sub-email"
                 type="email"
                 placeholder="your-email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1"
-                disabled={loading || checkingStatus}
+                className="w-full"
+                disabled={loading || isEditing}
                 required
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCheckStatus}
-                disabled={loading || checkingStatus || !email}
-              >
-                {checkingStatus ? "Checking..." : "Check Status"}
+              <p className="text-xs text-muted-foreground">
+                The address where species notifications will be sent.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="sub-tags" className="text-sm font-semibold text-foreground">
+                Species/Tags to Watch
+              </label>
+              <Input
+                id="sub-tags"
+                type="text"
+                placeholder="e.g. kangaroo, koala, emu"
+                value={tagsString}
+                onChange={(e) => setTagsString(e.target.value)}
+                className="w-full"
+                disabled={loading}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter a comma-separated list of species.
+              </p>
+            </div>
+
+            {/* Verification Helper card */}
+            {!isEditing && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-foreground/90 space-y-2">
+                <div className="flex items-center gap-2 font-semibold text-primary">
+                  <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>AWS SNS Verification Required</span>
+                </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  AWS requires email subscription verification. Once you subscribe, AWS will send you a confirmation email with subject <strong>"AWS Notification - Subscription Confirmation"</strong>. You must click the <strong>"Confirm Subscription"</strong> link in that email to activate alerts.
+                </p>
+              </div>
+            )}
+
+            {error && (
+              <div className="upload-error">
+                {error}
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-800 dark:text-emerald-300">
+                <p className="font-semibold mb-1">Success</p>
+                <p className="text-xs leading-relaxed">{successMessage}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              {isEditing && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleCancelEdit} 
+                  disabled={loading}
+                >
+                  Cancel Edit
+                </Button>
+              )}
+              
+              <Button type="submit" disabled={loading} className="upload-action-button">
+                {loading && (
+                  <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
+                    <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                )}
+                {loading 
+                  ? "Saving..." 
+                  : isEditing 
+                    ? "Update Subscribed Tags" 
+                    : "Add Subscription"
+                }
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Notifications will be sent to this email address. Click "Check Status" to refresh verification state.
-            </p>
-          </div>
+          </form>
+        </CardContent>
+      </Card>
 
-          <div className="flex flex-col gap-2">
-            <label htmlFor="sub-tags" className="text-sm font-semibold text-foreground">
-              {status === "verified" ? "Update Subscribed Species/Tags" : "Species/Tags to Watch"}
-            </label>
-            <Input
-              id="sub-tags"
-              type="text"
-              placeholder="e.g. kangaroo, koala, emu"
-              value={tagsString}
-              onChange={(e) => setTagsString(e.target.value)}
-              className="w-full"
-              disabled={loading || checkingStatus}
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              Enter a comma-separated list of species. You can edit and update this list freely at any time.
-            </p>
-          </div>
-
-          {/* Verification Helper card */}
-          {status !== "verified" && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-foreground/90 space-y-2">
-              <div className="flex items-center gap-2 font-semibold text-primary">
-                <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>AWS SNS Verification Required</span>
-              </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                AWS requires email subscription verification. Once you subscribe, AWS will send you a confirmation email with subject <strong>"AWS Notification - Subscription Confirmation"</strong>. You must click the <strong>"Confirm Subscription"</strong> link in that email to activate alerts.
-              </p>
-            </div>
-          )}
-
-          {status === "verified" && (
-            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-foreground/90 space-y-1">
-              <div className="flex items-center gap-2 font-semibold text-emerald-600 dark:text-emerald-400">
-                <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                <span>Subscription Fully Active</span>
-              </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Your email is already verified. You can change your subscribed species above and save them directly. Updates will apply instantly without requiring re-verification.
-              </p>
-            </div>
-          )}
-
-          {error && (
-            <div className="upload-error">
-              {error}
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-800 dark:text-emerald-300">
-              <p className="font-semibold mb-1">Success</p>
-              <p className="text-xs leading-relaxed">{successMessage}</p>
-            </div>
-          )}
-
-          <div className="flex justify-end pt-2">
-            <Button type="submit" disabled={loading || checkingStatus} className="upload-action-button">
-              {loading && (
-                <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
-                  <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              )}
-              {loading ? "Saving..." : status === "verified" ? "Update Subscribed Tags" : "Subscribe to Alerts"}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+    </div>
   )
 }
