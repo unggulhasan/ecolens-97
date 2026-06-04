@@ -14,7 +14,7 @@ type AuthSplitCardProps = {
 
 export function AuthSplitCard({ mode, redirectTo }: AuthSplitCardProps) {
   return (
-    <Card className="authCard">
+    <Card className="authCard py-0">
       <div className="authCardGrid">
         <AuthWelcomePanel />
         <Separator

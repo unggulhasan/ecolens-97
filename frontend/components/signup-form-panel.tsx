@@ -82,9 +82,9 @@ export function SignupFormPanel() {
               />
             </svg>
           </div>
-          <CardHeader className="authSuccessHeader">
-            <CardTitle className="authSuccessTitle">Check your email</CardTitle>
-            <CardDescription className="authSuccessDescription">
+          <CardHeader className="authSuccessHeader px-0 pb-2 flex flex-col items-center text-center w-full">
+            <CardTitle className="authSuccessTitle text-xl font-semibold text-center w-full">Check your email</CardTitle>
+            <CardDescription className="authSuccessDescription text-sm text-center">
               We have sent a temporary password to <strong className="text-foreground">{emailValue}</strong>. Please check your inbox to sign in.
             </CardDescription>
           </CardHeader>
@@ -100,14 +100,14 @@ export function SignupFormPanel() {
 
   return (
     <div className="authFormPanel">
-      <CardHeader className="authFormHeader">
-        <CardTitle className="authFormTitle">Create Account</CardTitle>
+      <CardHeader className="authFormHeader px-0 pb-4">
+        <CardTitle className="authFormTitle text-2xl font-semibold">Create Account</CardTitle>
         <CardDescription className="authFormDescription">
           Sign up to register a new account.
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="authFormContent">
+      <CardContent className="authFormContent px-0 pt-6">
         <form onSubmit={form.handleSubmit(onSubmit)} className="authFormSpacing">
           {error && (
             <Alert variant="destructive">
@@ -184,11 +184,11 @@ export function SignupFormPanel() {
               />
             </div>
 
-            <Button type="submit" className="authButtonFull mt-2" disabled={loading}>
+            <Button type="submit" className="authButtonFull w-full mt-2" disabled={loading}>
               {loading ? "Creating account..." : "Sign Up"}
             </Button>
 
-            <Button asChild variant="outline" className="authSignupButton" disabled={loading}>
+            <Button asChild variant="outline" className="authSignupButton w-full" disabled={loading}>
               <Link href="/login">
                 Already have an account? Sign In
               </Link>

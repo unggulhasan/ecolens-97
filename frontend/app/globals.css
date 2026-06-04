@@ -983,15 +983,15 @@
     }
 
     .authWelcomeEyebrow {
-      @apply text-xs font-medium tracking-wide uppercase text-emerald-200/90;
+      @apply text-xs font-medium tracking-wide uppercase text-white/90;
     }
 
     .authWelcomeTitle {
-      @apply text-3xl font-bold text-white;
+      @apply text-4xl font-extrabold text-white;
     }
 
     .authWelcomeDescription {
-      @apply text-base normal-case tracking-normal text-emerald-100/80;
+      @apply text-base normal-case tracking-normal text-white/80;
     }
 
     .authFormPanel {

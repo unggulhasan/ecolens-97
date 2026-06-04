@@ -18,26 +18,26 @@ type LoginFormPanelProps = {
 export function LoginFormPanel({ redirectTo = "/search" }: LoginFormPanelProps) {
   return (
     <div className="authFormPanel">
-      <CardHeader className="authFormHeader">
-        <CardTitle className="authFormTitle">Login</CardTitle>
+      <CardHeader className="authFormHeader px-0 pb-4">
+        <CardTitle className="authFormTitle text-2xl font-semibold">Login</CardTitle>
         <CardDescription className="authFormDescription">
           Sign in to continue.
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="authFormContent">
+      <CardContent className="authFormContent px-0 pt-6">
         <FieldGroup className="authFormActions">
           <form
             action={() => {
               signInWithCognito(redirectTo)
             }}
           >
-            <Button type="submit" className="authButtonFull">
+            <Button type="submit" className="authButtonFull w-full">
               Sign in with Cognito
             </Button>
           </form>
 
-          <Button asChild variant="outline" className="authSignupButton">
+          <Button asChild variant="outline" className="authSignupButton w-full">
             <Link href="/signup">
               Create an account
             </Link>

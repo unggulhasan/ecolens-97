@@ -18,11 +18,11 @@ export function AuthWelcomePanel({
   return (
     <div className="authWelcomePanel">
       <CardHeader className="authWelcomeHeader">
-        <CardDescription className="authWelcomeEyebrow">
+        <CardDescription className="authWelcomeEyebrow text-white">
           {eyebrow}
         </CardDescription>
-        <CardTitle className="authWelcomeTitle">{title}</CardTitle>
-        <CardDescription className="authWelcomeDescription">
+        <CardTitle className="authWelcomeTitle text-4xl font-extrabold">{title}</CardTitle>
+        <CardDescription className="authWelcomeDescription text-white">
           {description}
         </CardDescription>
       </CardHeader>
