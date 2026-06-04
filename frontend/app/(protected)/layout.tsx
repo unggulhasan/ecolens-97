@@ -1,5 +1,5 @@
 import { auth } from "@/auth"
-import { signOutWithCognito } from "@/auth-actions"
+import { signOutWithCognito } from "@/lib/auth-actions"
 import { UserDropdown } from "@/components/user-dropdown"
 import { NotificationDropdown } from "@/components/notification-dropdown"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"

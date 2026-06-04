@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { signOutWithCognito } from "@/auth-actions"
+import { signOutWithCognito } from "@/lib/auth-actions"
 import { Button } from "@/components/ui/button"
 
 type UserDropdownProps = {
