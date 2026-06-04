@@ -34,11 +34,11 @@ jobs:
         with:
           context: ./functions/gcp_inference
           push: true
-          no-cache: true
           tags: |
             australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-inference:${{ github.sha }}
             australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-inference:latest
-          
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Deploy to Cloud Run
         run: |
