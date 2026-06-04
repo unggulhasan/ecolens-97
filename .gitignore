@@ -20,3 +20,14 @@ override.tf.json
 *.tfvars
 *.tfvars.json
 .terraform.lock.hcl
+
+# ML models
+ml_models/*.pt
+ml_models/*.txt
+ml_models/*.jpg
+
+# Python
+.venv/
+**/.venv/
+__pycache__/
+*.py[cod]

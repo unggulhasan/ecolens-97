@@ -1,4 +1,4 @@
-name: Build and Push GCP Inference Image
+name: Build and Push GCP Orchestrator Image
 
 on:
   workflow_dispatch:
@@ -32,16 +32,16 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./functions/gcp_inference
+          context: ./functions/gcp_orchestrator
           push: true
           tags: |
-            australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-inference:${{ github.sha }}
-            australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-inference:latest
+            australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-orchestrator:${{ github.sha }}
+            australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-orchestrator:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run services update aussie-ecolens-prod-inference \
-            --region=australia-southeast1 \
-            --image=australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-inference:${{ github.sha }}
+      
+      # - name: Deploy to Cloud Run
+      #   run: |
+      #     gcloud run services update aussie-ecolens-prod-orchestrator \
+      #       --region=australia-southeast1 \
+      #       --image=australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-orchestrator:${{ github.sha }}
