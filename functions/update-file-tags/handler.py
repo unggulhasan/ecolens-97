@@ -1,8 +1,12 @@
 import json
 import boto3
 import os
+import logging
 from decimal import Decimal
 from urllib.parse import urlparse
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 dynamodb = boto3.resource('dynamodb', region_name=os.environ['AWS_REGION_NAME'])
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_NAME'])
@@ -60,16 +64,20 @@ def handle(event, context):
                 continue
 
             existing_tags = item.get('tags', {})
+            newly_added_tags = []
 
             if operation == 1:
                 # Add tags — set to 1 if not present, don't overwrite existing counts
                 for tag in tags:
-                    if tag not in existing_tags:
-                        existing_tags[tag] = Decimal(1)
+                    normalized_tag = tag.strip().lower()
+                    if normalized_tag not in existing_tags:
+                        existing_tags[normalized_tag] = Decimal(1)
+                        newly_added_tags.append(normalized_tag)
             else:
                 # Remove tags — ignore if not present (as per spec)
                 for tag in tags:
-                    existing_tags.pop(tag, None)
+                    normalized_tag = tag.strip().lower()
+                    existing_tags.pop(normalized_tag, None)
 
             # Update the record using PK
             table.update_item(
@@ -77,6 +85,36 @@ def handle(event, context):
                 UpdateExpression='SET tags = :tags',
                 ExpressionAttributeValues={':tags': existing_tags}
             )
+
+            # Publish SNS notifications if tags were newly added and SNS_TOPIC_ARN is configured
+            sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
+            if operation == 1 and newly_added_tags and sns_topic_arn:
+                try:
+                    sns = boto3.client('sns', region_name=os.environ.get('AWS_REGION_NAME', 'ap-southeast-4'))
+                    for tag in newly_added_tags:
+                        message_body = (
+                            f"Notification: A new wildlife file has been tagged in Aussie Ecolens!\n\n"
+                            f"Species Tag: {tag}\n"
+                            f"File URL: {url}\n"
+                            f"Timestamp: {item.get('uploaded_at', 'unknown')}\n\n"
+                            f"Log in to the system to search and view the full file."
+                        )
+                        subject = f"Aussie Ecolens: New {tag} file uploaded"
+
+                        logger.info("Publishing alert to SNS for tag: %s", tag)
+                        sns.publish(
+                            TopicArn=sns_topic_arn,
+                            Message=message_body,
+                            Subject=subject,
+                            MessageAttributes={
+                                'tag': {
+                                    'DataType': 'String',
+                                    'StringValue': tag
+                                }
+                            }
+                        )
+                except Exception as e:
+                    logger.error("Failed to publish SNS notifications: %s", str(e))
 
             updated.append({
                 'file_url': url,
