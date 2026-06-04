@@ -40,7 +40,7 @@ def generate_checksum(data: str) -> str:
 def random_tags() -> dict:
     """Generate realistic tag map with 1-3 species and random counts."""
     chosen = random.sample(SPECIES, random.randint(1, 3))
-    return {species: Decimal(random.randint(1, 5)) for species in chosen}
+    return {species: random.randint(1, 5) for species in chosen}
 
 
 def random_timestamp() -> str:
