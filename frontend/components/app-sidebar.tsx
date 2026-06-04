@@ -33,6 +33,16 @@ export function AppSidebar() {
       isCustomIcon: false,
     },
     {
+      title: "Manage Tags",
+      url: "/manage-tags",
+      icon: Tag01Icon,
+    },
+    {
+      title: "Delete Files",
+      url: "/delete",
+      icon: Delete02Icon,
+    },
+    {
       title: "Subscriptions",
       url: "/subscriptions",
       icon: (
@@ -51,16 +61,6 @@ export function AppSidebar() {
         </svg>
       ),
       isCustomIcon: true,
-    },
-    {
-      title: "Manage Tags",
-      url: "/manage-tags",
-      icon: Tag01Icon,
-    },
-    {
-      title: "Delete Files",
-      url: "/delete",
-      icon: Delete02Icon,
     },
   ]
 
