@@ -13,7 +13,7 @@ class DecimalEncoder(json.JSONEncoder):
             return int(obj)
         return super().default(obj)
 
-def handler(event, context):
+def handle(event, context):
     # Input: {"thumbnail_url": "s3://..."}
     body = json.loads(event.get('body', '{}'))
     thumbnail_url = body.get('thumbnail_url')

@@ -7,4 +7,4 @@ FROM public.ecr.aws/lambda/python:3.11
 
 COPY --from=builder /install ${LAMBDA_TASK_ROOT}
 
-CMD ["lambda_function.handler"]
+CMD ["handler.handle"]

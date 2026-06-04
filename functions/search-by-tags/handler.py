@@ -12,7 +12,7 @@ class DecimalEncoder(json.JSONEncoder):
             return int(obj)
         return super().default(obj)
 
-def handler(event, context):
+def handle(event, context):
     # Get tags from request body
     # Example input: {"kangaroo": 2, "wombat": 1}
     body = json.loads(event.get('body', '{}'))

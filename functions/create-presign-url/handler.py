@@ -9,7 +9,7 @@ DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 URL_EXPIRATION = 300
 
 
-def handler(event, context):
+def handle(event, context):
     # Extract user email from JWT claims injected by API Gateway JWT authorizer
     claims = (
         event.get("requestContext", {})
@@ -53,7 +53,7 @@ def handler(event, context):
         "Bucket": MEDIA_BUCKET_NAME,
         "Key": key,
         "ContentType": file_type,
-        # "ChecksumAlgorithm": "SHA256",
+        "ChecksumAlgorithm": "SHA256",
         "ChecksumSHA256": checksum,
         "Metadata": {
             "user-email": user_email,

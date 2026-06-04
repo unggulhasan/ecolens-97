@@ -37,7 +37,7 @@ def parse_s3_url(s3_url):
     return bucket, key
 
 
-def handler(event, context):
+def handle(event, context):
     """
     Query 6: Delete files and thumbnails from S3 and DynamoDB.
 
