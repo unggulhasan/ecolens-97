@@ -9,6 +9,12 @@ resource "google_storage_bucket_iam_member" "inference_model_bucket_reader" {
   member = "serviceAccount:${google_service_account.inference_runtime.email}"
 }
 
+resource "google_storage_bucket_iam_member" "inference_storage_bucket_reader" {
+  bucket = google_storage_bucket.storage.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.inference_runtime.email}"
+}
+
 resource "google_storage_bucket_iam_member" "inference_processing_bucket_reader" {
   bucket = google_storage_bucket.processing.name
   role   = "roles/storage.objectViewer"

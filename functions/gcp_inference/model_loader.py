@@ -8,6 +8,7 @@ MODEL_DIR = "/tmp/models"
 
 # being read from env variables, with a default values.
 MODEL_BUCKET_NAME = os.getenv("MODEL_BUCKET_NAME", "aussie-ecolens-gcp-models")
+MODEL_PREFIX = os.getenv("MODEL_PREFIX", "models")
 MEGADETECTOR_MODEL_FILE = os.getenv("MEGADETECTOR_MODEL_FILE", "mdv5a.pt")
 SPECIES_MODEL_FILE = os.getenv("SPECIES_MODEL_FILE", "model.pt")
 LABELS_FILE = os.getenv("LABELS_FILE", "labels.txt")
@@ -43,7 +44,8 @@ def download_blob_if_missing(bucket, file_name: str) -> str:
         return destination
 
     # a blob is the GCS object representing the file in the bucket.
-    blob = bucket.blob(file_name)
+    blob_name = f"{MODEL_PREFIX}/{file_name}"
+    blob = bucket.blob(blob_name)
 
     # blob.download_to_filename(destination) is how its being downloaded.
     print(f"Downloading {file_name} from bucket {MODEL_BUCKET_NAME}...")
