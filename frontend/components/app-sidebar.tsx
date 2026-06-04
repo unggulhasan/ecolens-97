@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Search01Icon, Upload01Icon } from "@hugeicons/core-free-icons"
+import { Delete02Icon, Search01Icon, Upload01Icon, Tag01Icon } from "@hugeicons/core-free-icons"
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -30,9 +30,19 @@ export function AppSidebar() {
       url: "/uploads",
       icon: Upload01Icon,
     },
+    {
+      title: "Manage Tags",
+      url: "/manage-tags",
+      icon: Tag01Icon,
+    },
+    {
+      title: "Delete Files",
+      url: "/delete",
+      icon: Delete02Icon,
+    },
   ]
 
-  return (
+    return (
     <Sidebar collapsible="icon">
       <SidebarContent className="pt-4">
         <SidebarGroup>
