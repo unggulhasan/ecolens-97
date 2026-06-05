@@ -27,3 +27,12 @@ resource "google_cloud_run_v2_service_iam_member" "aws_can_invoke_orchestrator" 
   role   = "roles/run.invoker"
   member = "serviceAccount:${google_service_account.aws_orchestrator_invoker.email}"
 }
+
+resource "google_cloud_run_v2_job_iam_member" "orchestrator_can_execute_video_inference_job" {
+  project  = var.gcp_project_id
+  location = var.gcp_region
+  name     = google_cloud_run_v2_job.video_inference.name
+
+  role   = "roles/run.jobsExecutorWithOverrides"
+  member = "serviceAccount:${google_service_account.orchestrator_runtime.email}"
+}

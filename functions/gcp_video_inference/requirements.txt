@@ -1,0 +1,9 @@
+requests
+google-cloud-storage
+pillow
+numpy
+tqdm
+megadetector==10.0.21
+torch
+torchvision
+opencv-python-headless

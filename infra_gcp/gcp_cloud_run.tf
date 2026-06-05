@@ -35,7 +35,7 @@ resource "google_cloud_run_v2_service" "inference" {
         name  = "MODEL_PREFIX"
         value = "models"
       }
-      
+
       env {
         name  = "MEGADETECTOR_MODEL_FILE"
         value = "mdv5a.pt"
