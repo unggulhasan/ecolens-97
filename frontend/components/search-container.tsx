@@ -19,7 +19,7 @@ import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon, Tag01Icon } from 
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
 import { useSession } from "next-auth/react"
-import { manageTags, deleteFiles, lookupByThumbnail } from "@/lib/api"
+import { manageTags, deleteFiles, lookupByThumbnail, searchBySpecies } from "@/lib/api"
 
 type TagCountInput = {
   id: string
@@ -183,15 +183,27 @@ export function SearchContainer() {
   }
 
   const searchTagsOnly = async (tagsString: string): Promise<SearchResult[]> => {
-    console.log("Searching species/tags only:", tagsString)
-    return new Promise((resolve) => setTimeout(() => resolve([
-      {
-        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
-        isOwner: true
-      },
-    ]), 1000))
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      throw new Error("Not authenticated. Please log in again.")
+    }
+    const species = tagsString
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean)
+
+    if (species.length === 0) {
+      throw new Error("Please enter at least one tag/species.")
+    }
+
+    const data = await searchBySpecies(idToken, species)
+    const userEmail = session?.user?.email || ""
+    return data.map((item) => ({
+      url: item.thumbnail_url_http || item.file_url_http,
+      fullUrl: item.file_url_http,
+      s3Url: item.file_url,
+      isOwner: item.user_id === userEmail,
+    }))
   }
 
   const searchThumbnail = async (url: string): Promise<SearchResult[]> => {

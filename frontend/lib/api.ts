@@ -123,3 +123,35 @@ export async function lookupByThumbnail(
 
   return response.json()
 }
+
+export type SearchBySpeciesResponseItem = {
+  file_url: string
+  file_url_http: string
+  thumbnail_url?: string
+  thumbnail_url_http?: string
+  user_id: string
+}
+
+export async function searchBySpecies(
+  idToken: string,
+  species: string[]
+): Promise<SearchBySpeciesResponseItem[]> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
+
+  const response = await fetch(`${baseUrl}/search-by-species`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ species }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`search-by-species returned ${response.status}`)
+  }
+
+  const data = await response.json()
+  return (data.results || []) as SearchBySpeciesResponseItem[]
+}
