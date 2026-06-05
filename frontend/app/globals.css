@@ -752,6 +752,35 @@
     }
   }
 
+  .search-results-list {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .search-results-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .search-results-list-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .search-results-list-status {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+
+  .search-results-list-skeleton-row:nth-child(even) {
+    background-color: color-mix(in oklch, var(--muted) 20%, transparent);
+  }
+
   .search-results-grid {
     display: grid;
     grid-template-columns: repeat(1, minmax(0, 1fr));
