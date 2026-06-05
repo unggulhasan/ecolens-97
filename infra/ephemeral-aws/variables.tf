@@ -29,7 +29,12 @@ variable "gcp_ml_endpoint" {
 }
 
 variable "gcp_function_url" {
-  description = "GCP Cloud Function URL that accepts inference requests from EventBridge"
+  description = "GCP Cloud Function URL that accepts inference requests from EventBridge (output of ephemeral-gcp)"
   type        = string
-  default     = "https://australia-southeast2-ecolens-498408.cloudfunctions.net/ecolens-prod-accept"
+}
+
+variable "gcp_project_id" {
+  description = "GCP project ID (used for EventBridge SA email reference)"
+  type        = string
+  default     = "ecolens-498408"
 }

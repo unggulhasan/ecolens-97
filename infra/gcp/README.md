@@ -1,6 +1,10 @@
-gcloud config set project YOUR_PROJECT_ID
+gcloud config set project ecolens-498408
 
 gcloud services enable \
+  cloudfunctions.googleapis.com \
+  cloudbuild.googleapis.com \
+  storage.googleapis.com \
+  secretmanager.googleapis.com \
   run.googleapis.com \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
@@ -13,14 +17,14 @@ gcloud iam service-accounts create eventbridge-invoker \
 gcloud iam service-accounts list --filter="email:eventbridge-invoker"
 
 gcloud iam service-accounts keys create ./sa-key.json \
-  --iam-account=eventbridge-invoker@YOUR_PROJECT_ID.iam.gserviceaccount.com
+  --iam-account=eventbridge-invoker@ecolens-498408.iam.gserviceaccount.com
 
 gcloud auth activate-service-account \
   eventbridge-invoker@ecolens-498408.iam.gserviceaccount.com \
   --key-file=./sa-key.json
 
 curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-  https://australia-southeast2-ecolens-498408.cloudfunctions.net/ecolens-prod-accept
+  https://australia-southeast2-ecolens-498408.cloudfunctions.net/aussie-ecolens-prod-accept-inference
 
 ---
 

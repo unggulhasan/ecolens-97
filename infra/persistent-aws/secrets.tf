@@ -2,12 +2,6 @@
 # Secrets Manager — GCP OIDC secrets (persistent)
 # ─────────────────────────────────────────────────────────────
 
-# Auto-generated client secret for EventBridge OAuth connection
-resource "random_password" "eventbridge_client_secret" {
-  length  = 64
-  special = false
-}
-
 # GCP service account key — passed as a Terraform variable at apply time
 resource "aws_secretsmanager_secret" "gcp_sa_key" {
   name        = "prod/gcp/sa-key"
@@ -31,5 +25,18 @@ resource "aws_secretsmanager_secret" "eventbridge_client_secret" {
 
 resource "aws_secretsmanager_secret_version" "eventbridge_client_secret" {
   secret_id     = aws_secretsmanager_secret.eventbridge_client_secret.id
-  secret_string = random_password.eventbridge_client_secret.result
+  secret_string = var.eventbridge_client_secret
+}
+
+# Callback secret — shared with GCP for HMAC authentication on the return path
+resource "aws_secretsmanager_secret" "callback_secret" {
+  name        = "prod/gcp/callback-secret"
+  description = "Shared secret for HMAC validation of GCP-to-AWS inference callbacks"
+
+  tags = local.common_tags
+}
+
+resource "aws_secretsmanager_secret_version" "callback_secret" {
+  secret_id     = aws_secretsmanager_secret.callback_secret.id
+  secret_string = var.callback_secret
 }

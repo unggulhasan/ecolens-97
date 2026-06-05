@@ -5,20 +5,28 @@
 
 # ── Enable required APIs ───────────────────────────────────
 resource "google_project_service" "cloudfunctions" {
-  project = var.gcp_project_id
-  service = "cloudfunctions.googleapis.com"
+  project            = var.gcp_project_id
+  service            = "cloudfunctions.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "cloudbuild" {
-  project = var.gcp_project_id
-  service = "cloudbuild.googleapis.com"
+  project            = var.gcp_project_id
+  service            = "cloudbuild.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "storage" {
-  project = var.gcp_project_id
-  service = "storage.googleapis.com"
+  project            = var.gcp_project_id
+  service            = "storage.googleapis.com"
+  disable_on_destroy = false
 }
 
+resource "google_project_service" "secretmanager" {
+  project            = var.gcp_project_id
+  service            = "secretmanager.googleapis.com"
+  disable_on_destroy = false
+}
 # ── Zip the function source code ───────────────────────────
 data "archive_file" "accept_function_source" {
   type        = "zip"
@@ -77,4 +85,33 @@ resource "google_cloudfunctions2_function_iam_member" "accept_invoker" {
 
   role   = "roles/cloudfunctions.invoker"
   member = "serviceAccount:eventbridge-invoker@ecolens-498408.iam.gserviceaccount.com"
+}
+
+# ── Callback HMAC Secret ───────────────────────────────────
+resource "google_secret_manager_secret" "callback_secret" {
+  secret_id = "callback-secret"
+  project   = var.gcp_project_id
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+resource "google_secret_manager_secret_version" "callback_secret" {
+  secret      = google_secret_manager_secret.callback_secret.id
+  secret_data = var.callback_secret
+}
+
+# Allow the Cloud Function's runtime SA to read the secret
+data "google_compute_default_service_account" "default" {
+  project = var.gcp_project_id
+}
+
+resource "google_secret_manager_secret_iam_member" "callback_secret_accessor" {
+  project   = var.gcp_project_id
+  secret_id = google_secret_manager_secret.callback_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${data.google_compute_default_service_account.default.email}"
 }

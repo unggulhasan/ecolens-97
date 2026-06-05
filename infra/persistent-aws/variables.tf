@@ -32,3 +32,15 @@ variable "gcp_sa_key_json" {
   type        = string
   sensitive   = true
 }
+
+variable "callback_secret" {
+  description = "Shared HMAC secret for GCP-to-AWS callback authentication"
+  type        = string
+  sensitive   = true
+}
+
+variable "eventbridge_client_secret" {
+  description = "Client secret that EventBridge presents to the Token Proxy Lambda"
+  type        = string
+  sensitive   = true
+}

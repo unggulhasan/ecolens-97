@@ -50,7 +50,12 @@ output "eb_client_secret_arn" {
 }
 
 output "eb_client_secret_value" {
-  description = "The auto-generated EventBridge client secret (sensitive — passed to Connection)"
-  value       = random_password.eventbridge_client_secret.result
+  description = "The EventBridge client secret (sensitive — passed to Connection)"
+  value       = var.eventbridge_client_secret
   sensitive   = true
+}
+
+output "callback_secret_arn" {
+  description = "ARN of the GCP callback HMAC secret (AWS side)"
+  value       = aws_secretsmanager_secret.callback_secret.arn
 }
