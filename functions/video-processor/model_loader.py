@@ -13,11 +13,17 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 from pathlib import Path
 
 import onnx
 import onnxruntime as ort
 from google.cloud import storage
+
+
+def _log(msg: str) -> None:
+    """Print with explicit flush so Cloud Logging gets per-line timestamps."""
+    print(msg, flush=True)
 
 
 # ─── Configuration (env-driven) ───────────────────────────────────────────────
@@ -70,7 +76,7 @@ def _patch_fp16_cast_nodes(model_path: Path) -> bytes:
                     break
 
     if patched:
-        print(f"[MODEL] Patched {patched} Cast node(s) for fp16 type mismatch ({model_path.name})")
+        _log(f"[MODEL] Patched {patched} Cast node(s) for fp16 type mismatch ({model_path.name})")
 
     return proto.SerializeToString()
 
@@ -80,13 +86,16 @@ def _patch_fp16_cast_nodes(model_path: Path) -> bytes:
 def _download_blob_if_missing(bucket: storage.Bucket, blob_name: str, destination: Path) -> Path:
     """Download a single GCS object to /tmp if not already cached."""
     if destination.exists():
-        print(f"[MODEL] {blob_name} already cached at {destination}")
+        _log(f"[MODEL] {blob_name} already cached at {destination}")
         return destination
 
-    print(f"[MODEL] Downloading gs://{bucket.name}/{blob_name} → {destination}")
+    _log(f"[MODEL] Downloading gs://{bucket.name}/{blob_name} → {destination}")
+    t0 = time.perf_counter()
     blob = bucket.blob(blob_name)
     blob.download_to_filename(str(destination))
-    print(f"[MODEL] Downloaded {blob_name} ({destination.stat().st_size / 1e6:.1f} MB)")
+    dt = time.perf_counter() - t0
+    size_mb = destination.stat().st_size / 1e6
+    _log(f"[MODEL] Downloaded {blob_name} ({size_mb:.1f} MB) in {dt:.1f}s ({size_mb / max(dt, 0.001):.1f} MB/s)")
     return destination
 
 
@@ -112,18 +121,27 @@ def _make_session(model_path: Path, patch_fp16: bool) -> ort.InferenceSession:
     opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
     if patch_fp16:
+        t_patch = time.perf_counter()
         model_bytes = _patch_fp16_cast_nodes(model_path)
-        return ort.InferenceSession(
+        _log(f"[MODEL] fp16 patch for {model_path.name} took {time.perf_counter() - t_patch:.1f}s")
+
+        t_init = time.perf_counter()
+        sess = ort.InferenceSession(
             model_bytes,
             sess_options=opts,
             providers=["CPUExecutionProvider"],
         )
+        _log(f"[MODEL] ORT InferenceSession({model_path.name}) built in {time.perf_counter() - t_init:.1f}s")
+        return sess
 
-    return ort.InferenceSession(
+    t_init = time.perf_counter()
+    sess = ort.InferenceSession(
         str(model_path),
         sess_options=opts,
         providers=["CPUExecutionProvider"],
     )
+    _log(f"[MODEL] ORT InferenceSession({model_path.name}) built in {time.perf_counter() - t_init:.1f}s")
+    return sess
 
 
 # ─── Public API ───────────────────────────────────────────────────────────────
@@ -138,15 +156,23 @@ def get_sessions() -> tuple[ort.InferenceSession, ort.InferenceSession]:
     with _init_lock:
         # Double-check inside the lock
         if _detector_session is None or _classifier_session is None:
-            print("[MODEL] Cold start — downloading models and building ORT sessions")
+            t_total = time.perf_counter()
+            _log("[MODEL] Cold start — downloading models and building ORT sessions")
+
+            t_dl = time.perf_counter()
             detector_path, classifier_path = _ensure_models_downloaded()
+            _log(f"[MODEL] All downloads finished in {time.perf_counter() - t_dl:.1f}s")
 
-            print(f"[MODEL] Loading detector   : {detector_path}")
+            _log(f"[MODEL] Loading detector   : {detector_path}")
+            t_det = time.perf_counter()
             _detector_session = _make_session(detector_path, patch_fp16=True)
+            _log(f"[MODEL] Detector ready in {time.perf_counter() - t_det:.1f}s")
 
-            print(f"[MODEL] Loading classifier : {classifier_path}")
+            _log(f"[MODEL] Loading classifier : {classifier_path}")
+            t_cls = time.perf_counter()
             _classifier_session = _make_session(classifier_path, patch_fp16=False)
+            _log(f"[MODEL] Classifier ready in {time.perf_counter() - t_cls:.1f}s")
 
-            print("[MODEL] ORT sessions ready")
+            _log(f"[MODEL] ORT sessions ready — total cold start {time.perf_counter() - t_total:.1f}s")
 
     return _detector_session, _classifier_session

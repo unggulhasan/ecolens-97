@@ -56,7 +56,7 @@ resource "google_cloud_run_v2_service" "video_processor" {
     max_instance_request_concurrency = 1       # one video per instance
 
     scaling {
-      min_instance_count = 0
+      min_instance_count = 1  # keep one warm instance to avoid cold-start redelivery storms
       max_instance_count = 10 # lower than image-processor; each job is heavier
     }
 
@@ -72,7 +72,8 @@ resource "google_cloud_run_v2_service" "video_processor" {
           cpu    = "2"   # supports 2 parallel inference workers
           memory = "8Gi" # /tmp RAM-backed; models + frames need headroom
         }
-        startup_cpu_boost = true
+        cpu_idle          = true # throttle CPU between requests — ~8x cheaper than always-allocated
+        startup_cpu_boost = true # full CPU during cold-start model load
       }
 
       env {
@@ -151,6 +152,36 @@ resource "google_eventarc_trigger" "video_processor_pubsub" {
     google_cloud_run_v2_service_iam_member.video_processor_invoker_binding,
     google_project_iam_member.video_processor_event_receiver,
   ]
+}
+
+# ── Patch Eventarc subscription ack deadline ─────────────────
+# Eventarc auto-creates a Pub/Sub push subscription with the default
+# ack deadline of 10 s.  Processing a video (download + FFmpeg +
+# inference) easily exceeds 10 s even on a warm instance, so Pub/Sub
+# re-delivers the message to a new instance before the first one
+# can respond — causing duplicate runs.  We patch it to 600 s (the
+# maximum) after the trigger is created.
+resource "null_resource" "video_processor_extend_ack_deadline" {
+  triggers = {
+    trigger_name = google_eventarc_trigger.video_processor_pubsub.name
+    topic_name   = google_pubsub_topic.video_inference_requests.name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -euo pipefail
+      SUB=$(gcloud pubsub subscriptions list \
+        --filter="topic:projects/${var.gcp_project_id}/topics/${google_pubsub_topic.video_inference_requests.name}" \
+        --format="value(name)" --limit=1)
+      echo "Patching ack deadline on: $SUB"
+      gcloud pubsub subscriptions update "$SUB" \
+        --ack-deadline=600 \
+        --min-retry-delay=60s \
+        --max-retry-delay=600s
+    EOT
+  }
+
+  depends_on = [google_eventarc_trigger.video_processor_pubsub]
 }
 
 # ── Outputs ──────────────────────────────────────────────────

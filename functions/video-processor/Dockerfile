@@ -1,5 +1,10 @@
 FROM python:3.12-slim
 
+# Flush stdout/stderr immediately so Cloud Logging timestamps are accurate
+# (Python block-buffers stdout when piped, batching all cold-start logs to
+# a single timestamp — PYTHONUNBUFFERED=1 forces line-by-line flushing).
+ENV PYTHONUNBUFFERED=1
+
 # FFmpeg for frame extraction + OpenCV runtime deps
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
