@@ -6,3 +6,5 @@ data "terraform_remote_state" "persistent" {
 }
 
 data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}

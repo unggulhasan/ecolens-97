@@ -60,6 +60,12 @@ resource "aws_iam_role_policy" "metadata_s3_dynamo" {
         Effect   = "Allow"
         Action   = ["dynamodb:PutItem"]
         Resource = aws_dynamodb_table.media_files.arn
+      },
+      {
+        Sid      = "PutEventsToDefaultBus"
+        Effect   = "Allow"
+        Action   = ["events:PutEvents"]
+        Resource = "arn:aws:events:${var.aws_region}:${data.aws_caller_identity.current.account_id}:event-bus/default"
       }
     ]
   })

@@ -26,6 +26,30 @@ DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 s3 = boto3.client("s3", region_name=REGION_NAME)
 dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
+events = boto3.client("events", region_name=REGION_NAME)
+
+
+def _emit_metadata_created(bucket: str, meta: dict, thumb_key: str) -> None:
+    """Emit custom event so downstream services can react (resolver, et al)."""
+    try:
+        events.put_events(
+            Entries=[
+                {
+                    "Source": "ecolens.metadata.created",
+                    "DetailType": "MetadataCreated",
+                    "Detail": json.dumps({
+                        "file_id": meta["file_id"],
+                        "source_key": meta["source_key"],
+                        "checksum": meta["checksum"],
+                        "thumbnail_key": thumb_key,
+                    }),
+                    "EventBusName": "default",
+                }
+            ]
+        )
+        logger.info("Emitted MetadataCreated for file_id=%s", meta["file_id"])
+    except Exception as exc:
+        logger.error("Failed to emit MetadataCreated event: %s", exc)
 
 
 def _read_thumbnail_metadata(bucket: str, key: str) -> dict:
@@ -85,6 +109,9 @@ def handle(event, context):
     logger.info("Metadata from thumbnail object: %s", meta)
 
     _write_record(bucket, decoded_key, meta)
+
+    # Notify downstream services AFTER the DynamoDB record exists
+    _emit_metadata_created(bucket, meta, decoded_key)
 
     return {
         "statusCode": 200,

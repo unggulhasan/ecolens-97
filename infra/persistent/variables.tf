@@ -26,3 +26,9 @@ variable "media_bucket_name" {
   description = "S3 bucket name for user uploads and thumbnails"
   type        = string
 }
+
+variable "gcp_sa_key_json" {
+  description = "GCP service account key JSON for EventBridge OIDC token generation"
+  type        = string
+  sensitive   = true
+}
