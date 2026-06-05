@@ -155,3 +155,25 @@ export async function searchBySpecies(
   const data = await response.json()
   return (data.results || []) as SearchBySpeciesResponseItem[]
 }
+
+export async function listAllFiles(
+  idToken: string,
+  page: number = 1
+): Promise<SearchBySpeciesResponseItem[]> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
+
+  const response = await fetch(`${baseUrl}/all-files?page=${page}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`all-files returned ${response.status}`)
+  }
+
+  const data = await response.json()
+  return (data.results || []) as SearchBySpeciesResponseItem[]
+}

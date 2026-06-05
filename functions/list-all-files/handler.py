@@ -4,6 +4,7 @@ from decimal import Decimal
 from urllib.parse import urlparse
 
 import boto3
+from botocore.config import Config
 
 REGION_NAME = os.environ['AWS_REGION_NAME']
 
@@ -13,6 +14,7 @@ s3 = boto3.client(
     's3',
     region_name=REGION_NAME,
     endpoint_url=f"https://s3.{REGION_NAME}.amazonaws.com",
+    config=Config(signature_version='s3v4'),
 )
 
 PAGE_SIZE = 10
@@ -52,11 +54,14 @@ def _generate_presigned_get(thumbnail_url: str) -> str | None:
 
 def _build_item(item: dict) -> dict:
     """Transform a DynamoDB item into the API response shape."""
+    file_url = item.get('file_url')
+    thumbnail_url = item.get('thumbnail_url')
+
     result = {
         'file_id': item.get('file_id'),
         'file_type': item.get('file_type'),
-        'file_url': item.get('file_url'),
-        'thumbnail_url': item.get('thumbnail_url'),
+        'file_url': file_url,
+        'thumbnail_url': thumbnail_url,
         'uploaded_at': item.get('uploaded_at'),
         'user_id': item.get('user_id'),
     }
@@ -64,11 +69,15 @@ def _build_item(item: dict) -> dict:
     if 'tags' in item:
         result['tags'] = item['tags']
 
-    thumbnail_url = item.get('thumbnail_url')
+    if file_url:
+        file_http = _generate_presigned_get(file_url)
+        if file_http:
+            result['file_url_http'] = file_http
+
     if thumbnail_url:
-        http_url = _generate_presigned_get(thumbnail_url)
-        if http_url:
-            result['thumbnail_url_http'] = http_url
+        thumb_http = _generate_presigned_get(thumbnail_url)
+        if thumb_http:
+            result['thumbnail_url_http'] = thumb_http
 
     return result
 

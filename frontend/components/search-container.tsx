@@ -19,7 +19,7 @@ import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon, Tag01Icon } from 
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
 import { useSession } from "next-auth/react"
-import { manageTags, deleteFiles, lookupByThumbnail, searchBySpecies } from "@/lib/api"
+import { manageTags, deleteFiles, lookupByThumbnail, searchBySpecies, listAllFiles } from "@/lib/api"
 
 type TagCountInput = {
   id: string
@@ -90,6 +90,35 @@ export function SearchContainer() {
   React.useEffect(() => {
     setSelectedUrls(new Set())
   }, [results])
+
+  // Load latest files on mount as default state
+  React.useEffect(() => {
+    const loadLatestFiles = async () => {
+      const idToken = (session as any)?.idToken as string
+      if (!idToken) return
+
+      setSearching(true)
+      setError(null)
+      try {
+        const data = await listAllFiles(idToken)
+        const userEmail = session?.user?.email || ""
+        const formattedResults = data.map((item) => ({
+          url: item.thumbnail_url_http || item.file_url_http,
+          fullUrl: item.file_url_http,
+          s3Url: item.file_url,
+          isOwner: item.user_id === userEmail,
+        }))
+        setResults(formattedResults)
+      } catch (err: any) {
+        console.error("Failed to load latest files:", err)
+        setError(err.message || "Failed to load latest files.")
+      } finally {
+        setSearching(false)
+      }
+    }
+
+    loadLatestFiles()
+  }, [session])
 
   const toggleSelect = (url: string) => {
     setSelectedUrls((prev) => {
