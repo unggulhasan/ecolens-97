@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon, Tag01Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
@@ -61,6 +62,9 @@ export function SearchContainer() {
 
   // Selection state
   const [selectedUrls, setSelectedUrls] = React.useState<Set<string>>(new Set())
+
+  // View mode state
+  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid")
 
   // Edit Tags modal state
   const [showEditModal, setShowEditModal] = React.useState(false)
@@ -372,6 +376,31 @@ export function SearchContainer() {
           </button>
         </div>
         <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Operation</label>
+          <div className="flex gap-3">
+            <Button
+              variant={editOperation === 1 ? "default" : "outline"}
+              className="flex-1"
+              onClick={() => {
+                setEditOperation(1)
+                if (editResult) { setEditResult(null); setEditTagsInput("") }
+              }}
+            >
+              Add Tags
+            </Button>
+            <Button
+              variant={editOperation === 0 ? "destructive" : "outline"}
+              className="flex-1"
+              onClick={() => {
+                setEditOperation(0)
+                if (editResult) { setEditResult(null); setEditTagsInput("") }
+              }}
+            >
+              Remove Tags
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">Tags</label>
           <Input
             placeholder="e.g. koala, dingo, wombat"
@@ -380,52 +409,44 @@ export function SearchContainer() {
           />
           <p className="text-xs text-muted-foreground">Comma-separated list of tags.</p>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Operation</label>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setEditOperation(1)}
-              className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                editOperation === 1
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-foreground border-border hover:bg-accent"
-              }`}
+        {editResult ? (
+          <>
+            <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+              {editResult}
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditResult(null)
+                  setEditTagsInput("")
+                }}
+              >
+                Continue
+              </Button>
+              <Button onClick={closeEditModal} className="upload-action-button">
+                Done
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={closeEditModal}>Cancel</Button>
+            <Button
+              onClick={handleEditTags}
+              disabled={!editTagsInput.trim() || editLoading}
+              className="upload-action-button"
             >
-              Add Tags
-            </button>
-            <button
-              onClick={() => setEditOperation(0)}
-              className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                editOperation === 0
-                  ? "bg-red-800 text-white border-red-800"
-                  : "bg-background text-foreground border-border hover:bg-accent"
-              }`}
-            >
-              Remove Tags
-            </button>
-          </div>
-        </div>
-        {editResult && (
-          <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-            {editResult}
+              {editLoading && (
+                <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
+                  <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              )}
+              {editLoading ? "Applying..." : editOperation === 1 ? "Add Tags" : "Remove Tags"}
+            </Button>
           </div>
         )}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={closeEditModal}>Cancel</Button>
-          <Button
-            onClick={handleEditTags}
-            disabled={!editTagsInput.trim() || editLoading}
-            className="upload-action-button"
-          >
-            {editLoading && (
-              <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
-                <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            )}
-            {editLoading ? "Applying..." : editOperation === 1 ? "Add Tags" : "Remove Tags"}
-          </Button>
-        </div>
       </div>
     </div>
   )
@@ -783,6 +804,38 @@ export function SearchContainer() {
                       Select all
                     </button>
                   )}
+                  {/* View mode toggle */}
+                  <div className="flex items-center rounded-md border border-border overflow-hidden">
+                    <button
+                      onClick={() => setViewMode("grid")}
+                      title="Icons view"
+                      className={`flex h-8 w-8 items-center justify-center transition-colors ${
+                        viewMode === "grid"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      title="List view"
+                      className={`flex h-8 w-8 items-center justify-center transition-colors ${
+                        viewMode === "list"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    </button>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -820,79 +873,150 @@ export function SearchContainer() {
                 </div>
               </div>
 
-              <div className="search-results-grid">
-                {results.map((result, index) => {
-                  const isVideo =
-                    result.s3Url.toLowerCase().endsWith(".mp4") ||
-                    result.s3Url.toLowerCase().endsWith(".mov") ||
-                    result.s3Url.toLowerCase().endsWith(".avi")
-                  const isSelected = selectedUrls.has(result.s3Url)
+              {viewMode === "grid" ? (
+                <div className="search-results-grid">
+                  {results.map((result, index) => {
+                    const isVideo =
+                      result.s3Url.toLowerCase().endsWith(".mp4") ||
+                      result.s3Url.toLowerCase().endsWith(".mov") ||
+                      result.s3Url.toLowerCase().endsWith(".avi")
+                    const isSelected = selectedUrls.has(result.s3Url)
 
-                  return (
-                    <div
-                      key={index}
-                      className={`search-result-card cursor-pointer select-none ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                      onClick={() => toggleSelect(result.s3Url)}
-                    >
+                    return (
                       <div
-                        className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
-                          isSelected
-                            ? "border-primary"
-                            : "border-white/80 bg-white/80"
-                        }`}
+                        key={index}
+                        className={`search-result-card group cursor-pointer select-none ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                        onClick={() => toggleSelect(result.s3Url)}
                       >
-                        {isSelected && (
-                          <div className="absolute inset-0 rounded bg-primary/15" />
-                        )}
-                        {isSelected && (
-                          <svg
-                            className="relative z-10 h-3 w-3 text-primary"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                      {!result.isOwner && (
-                        <div className="absolute top-2 right-2 z-10 rounded bg-black/50 px-1.5 py-0.5 text-xs text-white">
-                          Not yours
-                        </div>
-                      )}
-                      {isVideo ? (
-                        <video
-                          src={result.url}
-                          controls
-                          className="search-result-video"
-                        />
-                      ) : (
-                        <img
-                          src={result.url}
-                          alt={`Result ${index + 1}`}
-                          className="search-result-image"
-                        />
-                      )}
-                      <div className="search-result-overlay">
-                        <a
-                          href={result.fullUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="search-result-link"
-                          onClick={(e) => e.stopPropagation()}
+                        <div
+                          className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded border-2 transition-all bg-white ${
+                            isSelected
+                              ? "border-primary opacity-100"
+                              : "border-border opacity-0 group-hover:opacity-100"
+                          }`}
                         >
-                          View Full File
-                        </a>
+                          {isSelected && <div className="absolute inset-0 rounded bg-primary/15" />}
+                          {isSelected && (
+                            <svg
+                              className="relative z-10 h-3 w-3 text-primary"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        {!result.isOwner && (
+                          <div className="absolute top-2 right-2 z-10 rounded bg-black/50 px-1.5 py-0.5 text-xs text-white">
+                            Not yours
+                          </div>
+                        )}
+                        {isVideo ? (
+                          <video
+                            src={result.url}
+                            controls
+                            className="search-result-video"
+                          />
+                        ) : (
+                          <img
+                            src={result.url}
+                            alt={`Result ${index + 1}`}
+                            className="search-result-image"
+                          />
+                        )}
+                        <div className="search-result-overlay">
+                          <a
+                            href={result.fullUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="search-result-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            View Full File
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10" />
+                      <TableHead className="w-16">Thumbnail</TableHead>
+                      <TableHead>URL</TableHead>
+                      <TableHead>Tags</TableHead>
+                      <TableHead>Owner</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result, index) => {
+                      const isVideo =
+                        result.s3Url.toLowerCase().endsWith(".mp4") ||
+                        result.s3Url.toLowerCase().endsWith(".mov") ||
+                        result.s3Url.toLowerCase().endsWith(".avi")
+                      const isSelected = selectedUrls.has(result.s3Url)
+
+                      return (
+                        <TableRow
+                          key={index}
+                          className={`cursor-pointer select-none ${isSelected ? "bg-primary/5 hover:bg-primary/10" : ""}`}
+                          onClick={() => toggleSelect(result.s3Url)}
+                        >
+                          <TableCell>
+                            <div
+                              className={`relative flex h-5 w-5 items-center justify-center rounded border-2 transition-colors bg-white ${
+                                isSelected ? "border-primary" : "border-border"
+                              }`}
+                            >
+                              {isSelected && <div className="absolute inset-0 rounded bg-primary/15" />}
+                              {isSelected && (
+                                <svg className="relative z-10 h-3 w-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-12 w-12 overflow-hidden rounded-lg bg-muted">
+                              {isVideo ? (
+                                <video src={result.s3Url} className="h-full w-full object-cover" />
+                              ) : (
+                                <img src={result.s3Url} alt={`Result ${index + 1}`} className="h-full w-full object-cover" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <a
+                              href={result.s3Url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="truncate block text-xs text-primary underline-offset-2 hover:underline max-w-xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {result.s3Url}
+                            </a>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">—</TableCell>
+                          <TableCell className="text-xs">
+                            {result.isOwner
+                              ? <span className="text-foreground">{(session?.user?.name ?? session?.user?.email) || "You"}</span>
+                              : <span className="text-muted-foreground">Other user</span>
+                            }
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           )}
 
