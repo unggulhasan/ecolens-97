@@ -1,12 +1,12 @@
 resource "aws_lambda_function" "thumbnail" {
-  function_name    = "${var.app_name}-${var.environment}-on-image-uploaded"
+  function_name    = "${var.app_name}-${var.environment}-on-media-uploaded"
   role             = aws_iam_role.thumbnail_exec.arn
   package_type     = "Image"
   image_uri        = local.thumbnail_image_uri
   timeout          = 30
   memory_size      = 1024
   source_code_hash = sha256(join(",", [
-    filesha256("${path.root}/../../functions/on-image-uploaded/handler.py")
+    filesha256("${path.root}/../../functions/on-media-uploaded/handler.py")
   ]))
 
   depends_on = [null_resource.thumbnail_docker_build_push]
@@ -22,7 +22,7 @@ resource "aws_lambda_function" "thumbnail" {
 }
 
 resource "aws_iam_role" "thumbnail_exec" {
-  name = "${var.app_name}-${var.environment}-on-image-uploaded"
+  name = "${var.app_name}-${var.environment}-on-media-uploaded"
 
   assume_role_policy = local.assume_role_policy_json
 
@@ -40,7 +40,7 @@ resource "aws_iam_role_policy_attachment" "thumbnail_ecr_attachment" {
 }
 
 resource "aws_iam_role_policy" "thumbnail_s3" {
-  name = "${var.app_name}-${var.environment}-on-image-uploaded-s3"
+  name = "${var.app_name}-${var.environment}-on-media-uploaded-s3"
   role = aws_iam_role.thumbnail_exec.name
 
   policy = jsonencode({
@@ -57,6 +57,12 @@ resource "aws_iam_role_policy" "thumbnail_s3" {
         Effect = "Allow"
         Action = ["s3:GetObject", "s3:GetObjectAttributes", "s3:HeadObject"]
         Resource = "arn:aws:s3:::${local.persistent_state.media_bucket_name}/images/*"
+      },
+      {
+        Sid    = "ReadSourceVideos"
+        Effect = "Allow"
+        Action = ["s3:GetObject", "s3:GetObjectAttributes", "s3:HeadObject"]
+        Resource = "arn:aws:s3:::${local.persistent_state.media_bucket_name}/videos/*"
       },
       {
         Sid      = "ReadWriteThumbnails"

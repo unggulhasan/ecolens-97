@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import tempfile
 import urllib.parse
 
 import boto3
@@ -33,6 +34,16 @@ def _thumbnail_key(original_key: str) -> str:
     """Map  images/{file_id}/<name>  →  thumbnails/{file_id}/<name>."""
     parts = original_key.split("/")
     # expected: ["images", "<file_id>", "<filename>"]
+    file_id = parts[1] if len(parts) >= 3 else "unknown"
+    filename = parts[-1]
+    base, _ = os.path.splitext(filename)
+    return f"thumbnails/{file_id}/{base}.jpg"
+
+
+def _thumbnail_key_video(original_key: str) -> str:
+    """Map  videos/{file_id}/<name>  →  thumbnails/{file_id}/<name>.jpg."""
+    parts = original_key.split("/")
+    # expected: ["videos", "<file_id>", "<filename>"]
     file_id = parts[1] if len(parts) >= 3 else "unknown"
     filename = parts[-1]
     base, _ = os.path.splitext(filename)
@@ -153,6 +164,7 @@ def _process(bucket: str, key: str) -> dict:
             "checksum": checksum,
             "source-key": decoded_key,
             "file-id": file_id,
+            "file-type": "image",
         },
     )
 
@@ -160,6 +172,105 @@ def _process(bucket: str, key: str) -> dict:
         "source_key": decoded_key,
         "thumbnail_key": out_key,
         "original_size_bytes": len(raw),
+        "thumbnail_size_bytes": out_size,
+        "thumbnail_width": thumbnail.shape[1],
+        "thumbnail_height": thumbnail.shape[0],
+        "user_id": user_id,
+        "skipped": False,
+    }
+
+
+def _process_video(bucket: str, key: str) -> dict:
+    """Extract first frame from a video and upload it as a JPEG thumbnail."""
+    decoded_key = urllib.parse.unquote_plus(key)
+    logger.info("Processing video s3://%s/%s", bucket, decoded_key)
+
+    user_id, checksum = _get_metadata(bucket, decoded_key)
+    logger.info("User ID from S3 metadata: %s", user_id)
+
+    if not checksum:
+        logger.warning(
+            "Skipping thumbnail generation for %s: no checksum in object metadata.",
+            decoded_key,
+        )
+        return {
+            "source_key": decoded_key,
+            "skipped": True,
+            "reason": "missing_checksum",
+        }
+
+    file_id = _extract_file_id(decoded_key)
+    out_key = _thumbnail_key_video(decoded_key)
+    logger.info("File ID: %s | Thumbnail key: %s", file_id, out_key)
+
+    if _thumbnail_exists(MEDIA_BUCKET_NAME, out_key):
+        logger.info("Thumbnail already exists at %s, skipping.", out_key)
+        return {
+            "source_key": decoded_key,
+            "thumbnail_key": out_key,
+            "skipped": True,
+            "reason": "thumbnail_already_exists",
+        }
+
+    # Download video to /tmp so cv2.VideoCapture can open it by path
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+        tmp_path = tmp.name
+
+    try:
+        response = s3.get_object(Bucket=bucket, Key=decoded_key)
+        with open(tmp_path, "wb") as f:
+            f.write(response["Body"].read())
+
+        cap = cv2.VideoCapture(tmp_path)
+        if not cap.isOpened():
+            raise ValueError(f"cv2.VideoCapture could not open {tmp_path!r}")
+
+        ok, frame = cap.read()
+        cap.release()
+
+        if not ok or frame is None:
+            raise ValueError(f"Could not read first frame from {decoded_key!r}")
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+    thumbnail = _resize(frame)
+
+    encode_params = [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY]
+    ok, buf = cv2.imencode(".jpg", thumbnail, encode_params)
+    if not ok:
+        raise RuntimeError("cv2.imencode failed for video frame")
+
+    out_size = len(buf)
+    logger.info(
+        "Uploading video thumbnail (%dx%d, %d bytes) to s3://%s/%s",
+        thumbnail.shape[1],
+        thumbnail.shape[0],
+        out_size,
+        MEDIA_BUCKET_NAME,
+        out_key,
+    )
+
+    s3.put_object(
+        Bucket=MEDIA_BUCKET_NAME,
+        Key=out_key,
+        Body=buf.tobytes(),
+        ContentType="image/jpeg",
+        IfNoneMatch="*",
+        Metadata={
+            "user-email": user_id,
+            "checksum": checksum,
+            "source-key": decoded_key,
+            "file-id": file_id,
+            "file-type": "video",
+        },
+    )
+
+    return {
+        "source_key": decoded_key,
+        "thumbnail_key": out_key,
         "thumbnail_size_bytes": out_size,
         "thumbnail_width": thumbnail.shape[1],
         "thumbnail_height": thumbnail.shape[0],
@@ -179,6 +290,11 @@ def handle(event: dict, context) -> dict:
         logger.error("No object key found in event detail: %s", detail)
         return {"statusCode": 400, "body": "Missing object key in event"}
 
-    result = _process(bucket, key)
+    decoded_key = urllib.parse.unquote_plus(key)
+    if decoded_key.startswith("videos/"):
+        result = _process_video(bucket, key)
+    else:
+        result = _process(bucket, key)
+
     logger.info("Done: %s", result)
     return {"statusCode": 200, "body": json.dumps(result)}

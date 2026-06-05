@@ -40,8 +40,8 @@ resource "aws_ecr_repository_policy" "thumbnail" {
 
 resource "null_resource" "thumbnail_docker_build_push" {
   triggers = {
-    lambda_function = filesha256("${path.root}/../../functions/on-image-uploaded/handler.py")
-    dockerfile      = filesha256("${path.root}/../../functions/on-image-uploaded/Dockerfile")
+    lambda_function = filesha256("${path.root}/../../functions/on-media-uploaded/handler.py")
+    dockerfile      = filesha256("${path.root}/../../functions/on-media-uploaded/Dockerfile")
   }
 
   provisioner "local-exec" {
@@ -55,7 +55,7 @@ resource "null_resource" "thumbnail_docker_build_push" {
         --push \
         --build-arg BASE_IMAGE_URI=${local.base_image_uri} \
         -t ${local.thumbnail_image_uri} \
-        ${path.root}/../../functions/on-image-uploaded
+        ${path.root}/../../functions/on-media-uploaded
     EOT
   }
 

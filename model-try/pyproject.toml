@@ -1,0 +1,15 @@
+[project]
+name = "ecolens-model-try"
+version = "0.1.0"
+requires-python = "==3.12.*"
+dependencies = [
+    "onnxruntime>=1.18.0",  # ONNX Runtime for inference — no PyTorch needed
+    "onnx>=1.16.0",         # graph inspection and patching (fp16 Cast node fix)
+    "Pillow>=10.0.0",       # image loading and cropping
+    "numpy>=1.26.0",        # array operations and NMS
+    "tqdm>=4.66.0",         # progress bars
+]
+
+[tool.uv]
+# Use uv's own managed Python — avoids macOS python.org SSL cert issues
+python-preference = "managed"

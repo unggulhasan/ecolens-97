@@ -63,7 +63,7 @@ def _generate_presigned_url(bucket: str, key: str) -> str:
         raise
 
 
-def _emit_inference_event(file_id: str, presigned_url: str) -> None:
+def _emit_inference_event(file_id: str, presigned_url: str, file_type: str) -> None:
     """Emit `ecolens.gcp.inference` custom event for EventBridge → GCP delivery."""
     events.put_events(
         Entries=[
@@ -73,12 +73,13 @@ def _emit_inference_event(file_id: str, presigned_url: str) -> None:
                 "Detail": json.dumps({
                     "file_id": file_id,
                     "presigned_url": presigned_url,
+                    "file_type": file_type,
                 }),
                 "EventBusName": EVENT_BUS_NAME,
             }
         ]
     )
-    logger.info("Emitted GcpInferenceRequest for file_id=%s", file_id)
+    logger.info("Emitted GcpInferenceRequest for file_id=%s file_type=%s", file_id, file_type)
 
 
 def handle(event, context):
@@ -88,12 +89,13 @@ def handle(event, context):
 
     file_id = detail.get("file_id")
     source_key = detail.get("source_key")
+    file_type = detail.get("file_type", "image")
 
     if not file_id or not source_key:
         logger.error("Missing file_id or source_key in event detail: %s", detail)
         return {"statusCode": 400, "body": "Missing file_id or source_key"}
 
-    logger.info("Resolving file_id=%s source_key=%s", file_id, source_key)
+    logger.info("Resolving file_id=%s source_key=%s file_type=%s", file_id, source_key, file_type)
 
     # 1. Confirm DynamoDB record exists
     record = _read_dynamodb_record(file_id)
@@ -104,7 +106,7 @@ def handle(event, context):
     presigned_url = _generate_presigned_url(MEDIA_BUCKET_NAME, source_key)
 
     # 3. Emit inference event for EventBridge → GCP
-    _emit_inference_event(file_id, presigned_url)
+    _emit_inference_event(file_id, presigned_url, file_type)
 
     return {
         "statusCode": 200,

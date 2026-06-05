@@ -1,0 +1,30 @@
+[project]
+name = "ecolens-model-converter"
+version = "0.1.0"
+requires-python = "==3.12.*"
+dependencies = [
+    "megadetector",     # pulls in torch, torchvision, and the YOLOv5 stack
+    "onnx2torch",       # required to unpickle model.pt — classifier was saved with onnx2torch classes
+    "onnx>=1.16.0",     # 1.16+ ships pre-built wheels for Python 3.12 / macOS aarch64; avoids cmake
+    "onnxconverter-common>=1.16.0",
+    "onnxruntime",      # forward-pass validation in convert_to_onnx.py
+    "onnxscript",       # required by torch>=2.x for opset 17+ ONNX export
+    "setuptools<81",    # pkg_resources was removed in setuptools 81; yolov5 needs it
+    "tqdm",             # progress bars (megadetector runtime dep)
+]
+
+[tool.uv]
+# Use uv's own managed Python — avoids macOS python.org SSL cert issues
+python-preference = "managed"
+# Lock to CPU-only PyTorch wheels — no CUDA needed for a one-off conversion
+# Remove the index and sources blocks below if you want GPU-accelerated export
+index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]

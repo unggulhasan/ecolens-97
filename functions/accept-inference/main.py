@@ -47,5 +47,6 @@ def accept(request):
         "received": {
             "file_id": request_json.get("file_id"),
             "presigned_url": request_json.get("presigned_url"),
+            "file_type": request_json.get("file_type"),
         },
     }, 200, {"Content-Type": "application/json"}

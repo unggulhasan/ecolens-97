@@ -42,6 +42,7 @@ def _emit_metadata_created(bucket: str, meta: dict, thumb_key: str) -> None:
                         "source_key": meta["source_key"],
                         "checksum": meta["checksum"],
                         "thumbnail_key": thumb_key,
+                        "file_type": meta["file_type"],
                     }),
                     "EventBusName": "default",
                 }
@@ -61,6 +62,7 @@ def _read_thumbnail_metadata(bucket: str, key: str) -> dict:
         "checksum": meta.get("checksum", ""),
         "source_key": meta.get("source-key", ""),
         "file_id": meta.get("file-id", ""),
+        "file_type": meta.get("file-type", "image"),
     }
 
 
@@ -74,7 +76,7 @@ def _write_record(bucket: str, thumb_key: str, meta: dict) -> None:
         "checksum": meta["checksum"],
         "file_url": file_url,
         "thumbnail_url": thumbnail_url,
-        "file_type": "image",
+        "file_type": meta["file_type"],
         "uploaded_at": datetime.datetime.utcnow().isoformat() + "Z",
         "user_id": meta["user_id"],
     }

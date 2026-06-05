@@ -110,8 +110,9 @@ resource "aws_cloudwatch_event_target" "gcp_inference" {
     input_paths = {
       file_id       = "$.detail.file_id"
       presigned_url = "$.detail.presigned_url"
+      file_type     = "$.detail.file_type"
     }
-    input_template = "{\"file_id\": \"<file_id>\", \"presigned_url\": \"<presigned_url>\"}"
+    input_template = "{\"file_id\": \"<file_id>\", \"presigned_url\": \"<presigned_url>\", \"file_type\": \"<file_type>\"}"
   }
 
   # Retry up to 10 times over 1 hour before sending to DLQ
