@@ -1,8 +1,8 @@
 "use client"
 
 import { AuthWelcomePanel } from "@/components/auth-welcome-panel"
-import { LoginFormPanel } from "@/components/login-form-panel"
-import { SignupFormPanel } from "@/components/signup-form-panel"
+import { LoginFormPanel } from "@/components/auth-login-form"
+import { SignupFormPanel } from "@/components/auth-signup-form"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"

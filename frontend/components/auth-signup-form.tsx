@@ -14,7 +14,7 @@ import {
 import { Field, FieldLabel, FieldGroup, FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { SignupSuccessPanel } from "@/components/signup-success-panel"
+import { SignupSuccessPanel } from "@/components/auth-signup-success"
 
 export function SignupFormPanel() {
   const { form, loading, error, success, onSubmit } = useSignup()
@@ -142,4 +142,3 @@ export function SignupFormPanel() {
     </div>
   )
 }
-

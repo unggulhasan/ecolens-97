@@ -1,5 +1,5 @@
 import { auth } from "@/auth"
-import { SubscriptionsForm } from "@/components/subscriptions-form"
+import { SubscriptionsForm } from "@/components/subscription-form"
 import { listSubscriptions } from "@/lib/subscription-actions"
 
 export default async function SubscriptionsPage() {

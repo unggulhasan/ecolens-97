@@ -3,7 +3,7 @@ import { getPresignedUrl } from "@/lib/upload-actions"
 import { calculateChecksum, uploadFileToS3 } from "@/lib/s3-client"
 import { validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
-import type { UploadStatus } from "@/components/selected-file-details"
+import type { UploadStatus } from "@/components/upload-file-details"
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 

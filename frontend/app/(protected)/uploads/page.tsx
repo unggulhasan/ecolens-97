@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card"
 import { useFileUpload } from "@/hooks/use-file-upload"
 import { UploadDropzone } from "@/components/upload-dropzone"
-import { SelectedFileDetails } from "@/components/selected-file-details"
+import { SelectedFileDetails } from "@/components/upload-file-details"
 import { UploadSuccessPanel } from "@/components/upload-success-panel"
 
 export default function UploadsPage() {
