@@ -1,13 +1,13 @@
 resource "google_cloud_run_v2_service" "inference" {
-  name     = "${var.app_name}-${var.environment}-inference"
-  location = var.gcp_region
+  name                = "${var.app_name}-${var.environment}-inference"
+  location            = var.gcp_region
   deletion_protection = false
-  
+
   template {
 
-    service_account = google_service_account.inference_runtime.email
+    service_account                  = google_service_account.inference_runtime.email
     max_instance_request_concurrency = 1
-  
+
     scaling {
       min_instance_count = 1
       max_instance_count = 3
@@ -28,7 +28,12 @@ resource "google_cloud_run_v2_service" "inference" {
 
       env {
         name  = "MODEL_BUCKET_NAME"
-        value = google_storage_bucket.models.name
+        value = google_storage_bucket.storage.name
+      }
+
+      env {
+        name  = "MODEL_PREFIX"
+        value = "models"
       }
 
       env {
@@ -45,7 +50,7 @@ resource "google_cloud_run_v2_service" "inference" {
         name  = "LABELS_FILE"
         value = "labels.txt"
       }
-      
+
     }
   }
 

@@ -1,12 +1,9 @@
 import functions_framework
 
 from inference_service import perform_inference
-from gcs_service import download_gcs_file, cleanup_file
+from download_service import download_presigned_url_file, cleanup_file as cleanup_downloaded_file
 
-
-# enpoint receives the GCS URI of the image/frame to be processed.
-# media processor cloud run servise will upload the image/frame to gcs,
-# and then call this endpoint with the GCS URI of the uploaded image/frame.
+# enpoint receives presigned url to the s3 bucket where the image to be processed.
 @functions_framework.http
 def infer(request):
     local_file_path = None
@@ -26,21 +23,37 @@ def infer(request):
                 "message": "Missing JSON body."
             }, 400
 
-        image_uri = request_json.get("image_uri")
-        if not image_uri:
+        request_uuid = request_json.get("uuid")
+        file_type = request_json.get("file_type")
+        presigned_url = request_json.get("presigned_url")
+
+        if not request_uuid:
             return {
                 "status": "error",
-                "message": "Missing 'image_uri' in request body."
+                "message": "Missing 'uuid' in request body."
             }, 400
         
-        local_file_path = download_gcs_file(image_uri)
+        if not file_type:
+            return {
+                "status": "error",
+                "message": "Missing 'file_type' in request body."
+            }, 400
+
+        if not presigned_url:
+            return {
+                "status": "error",
+                "message": "Missing 'presigned_url' in request body."
+            }, 400
+        
+        local_file_path = download_presigned_url_file(presigned_url, request_uuid, file_type)
         tags = perform_inference(local_file_path)
 
         return {
             "status": "success",
-            "image_uri": image_uri,
+            "uuid": request_uuid,
             "tags": tags
         }, 200
+    
     except Exception as error:
         print("[INFER] Error:", str(error))
         return {
@@ -51,7 +64,7 @@ def infer(request):
     # always ensuring that the downloaded file is cleaned up after inference.
     finally:
         if local_file_path:
-            cleanup_file(local_file_path)
+            cleanup_downloaded_file(local_file_path)
 
 
 

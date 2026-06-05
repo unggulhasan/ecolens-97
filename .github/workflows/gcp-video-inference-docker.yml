@@ -1,4 +1,4 @@
-name: Build and Push GCP Orchestrator Image
+name: Build and Push GCP Video Inference Job Image
 
 on:
   workflow_dispatch:
@@ -32,16 +32,16 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./functions/gcp_orchestrator
+          context: ./functions/gcp_video_inference
           push: true
           tags: |
-            australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-orchestrator:${{ github.sha }}
-            australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-orchestrator:latest
+            australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-video-inference:${{ github.sha }}
+            australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-video-inference:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
-      - name: Deploy to Cloud Run
+
+      - name: Deploy Cloud Run Job
         run: |
-          gcloud run services update aussie-ecolens-prod-orchestrator \
+          gcloud run jobs deploy aussie-ecolens-prod-video-inference-job \
             --region=australia-southeast1 \
-            --image=australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-orchestrator:${{ github.sha }}
+            --image=australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-video-inference:${{ github.sha }}

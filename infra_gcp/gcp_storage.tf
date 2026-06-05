@@ -1,22 +1,20 @@
-resource "google_storage_bucket" "models" {
-  name                        = "${var.app_name}-gcp-models"
+resource "google_storage_bucket" "storage" {
+  name                        = "${var.app_name}-gcp-storage"
   location                    = var.gcp_region
-  uniform_bucket_level_access = true # access control at bucket level only, not seperate for each file
-  versioning {
-    enabled = true # Enable versioning for model buckets to allow rollbacks and history tracking
-  }
-}
+  uniform_bucket_level_access = true
 
-resource "google_storage_bucket" "processing" {
-  name                       = "${var.app_name}-gcp-processing"
-  location                    = var.gcp_region
-  uniform_bucket_level_access = true 
+  versioning {
+    enabled = true
+  }
+
   lifecycle_rule {
     action {
-      type = "Delete" # Automatically delete files after a certain period to manage storage costs
+      type = "Delete"
     }
+
     condition {
-      age = 1 # Delete files older than 1 day
+      age            = 1
+      matches_prefix = ["processing/"]
     }
   }
 }
