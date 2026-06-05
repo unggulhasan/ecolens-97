@@ -24,6 +24,26 @@ resource "aws_dynamodb_table" "user_subscriptions" {
   tags = local.common_tags
 }
 
+# ------------------------------ DYNAMODB NOTIFICATIONS TABLE ------------------
+resource "aws_dynamodb_table" "user_notifications" {
+  name         = "${var.app_name}-${var.environment}-user-notifications"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+  range_key    = "notification_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "notification_id"
+    type = "S"
+  }
+
+  tags = local.common_tags
+}
+
 # ------------------------------ SUBSCRIBE LAMBDA --------------------------------
 data "archive_file" "lambda_subscribe" {
   type        = "zip"
@@ -100,6 +120,34 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_subscribe_dynamodb" {
   policy_arn = aws_iam_policy.dynamodb_subscriptions_access.arn
 }
 
+# IAM Policy for DynamoDB Notifications Table
+resource "aws_iam_policy" "dynamodb_notifications_access" {
+  name = "${var.app_name}-${var.environment}-dynamodb-notifications-access"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = aws_dynamodb_table.user_notifications.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_subscribe_notifications" {
+  role       = aws_iam_role.lambda_exec_subscribe.name
+  policy_arn = aws_iam_policy.dynamodb_notifications_access.arn
+}
+
 resource "aws_lambda_function" "subscribe" {
   function_name    = "${var.app_name}-${var.environment}-subscribe-notifications"
   role             = aws_iam_role.lambda_exec_subscribe.arn
@@ -112,6 +160,7 @@ resource "aws_lambda_function" "subscribe" {
     variables = {
       SNS_TOPIC_ARN            = aws_sns_topic.media_alerts.arn
       SUBSCRIPTIONS_TABLE_NAME = aws_dynamodb_table.user_subscriptions.name
+      NOTIFICATIONS_TABLE_NAME = aws_dynamodb_table.user_notifications.name
       AWS_REGION_NAME          = var.aws_region
     }
   }
@@ -152,6 +201,22 @@ resource "aws_apigatewayv2_route" "subscribe_delete" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "notifications_get" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /notifications"
+  target             = "integrations/${aws_apigatewayv2_integration.subscribe.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "notifications_read_post" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "POST /notifications/read"
+  target             = "integrations/${aws_apigatewayv2_integration.subscribe.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_lambda_permission" "subscribe" {
   statement_id  = "AllowAPIGatewayInvokeSubscribe"
   action        = "lambda:InvokeFunction"
@@ -179,4 +244,19 @@ resource "aws_iam_policy" "sns_publish_policy" {
 resource "aws_iam_role_policy_attachment" "lambda_exec_query_5_sns" {
   role       = aws_iam_role.lambda_exec_query_5.name
   policy_arn = aws_iam_policy.sns_publish_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_5_notifications" {
+  role       = aws_iam_role.lambda_exec_query_5.name
+  policy_arn = aws_iam_policy.dynamodb_notifications_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_5_subscriptions" {
+  role       = aws_iam_role.lambda_exec_query_5.name
+  policy_arn = aws_iam_policy.dynamodb_subscriptions_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_subscribe_s3" {
+  role       = aws_iam_role.lambda_exec_subscribe.name
+  policy_arn = aws_iam_policy.s3_get_object_access.arn
 }
