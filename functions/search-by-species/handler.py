@@ -76,7 +76,8 @@ def handle(event, context):
                 'file_url_http': _generate_presigned_get(file_url) or file_url,
                 'thumbnail_url': thumbnail_url,
                 'thumbnail_url_http': _generate_presigned_get(thumbnail_url) if thumbnail_url else None,
-                'user_id': item.get('user_id')
+                'user_id': item.get('user_id'),
+                'tags': item.get('tags', {})
             })
 
     return {

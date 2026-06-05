@@ -130,6 +130,7 @@ export type SearchBySpeciesResponseItem = {
   thumbnail_url?: string
   thumbnail_url_http?: string
   user_id: string
+  tags?: Record<string, number>
 }
 
 export async function searchBySpecies(

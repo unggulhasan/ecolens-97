@@ -32,6 +32,8 @@ type SearchResult = {
   fullUrl: string
   s3Url: string
   isOwner: boolean
+  userId: string
+  tags: Record<string, number>
 }
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
@@ -107,6 +109,8 @@ export function SearchContainer() {
           fullUrl: item.file_url_http,
           s3Url: item.file_url,
           isOwner: item.user_id === userEmail,
+          userId: item.user_id,
+          tags: item.tags || {},
         }))
         setResults(formattedResults)
       } catch (err: any) {
@@ -194,19 +198,25 @@ export function SearchContainer() {
         url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
         fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
         s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
-        isOwner: true
+        isOwner: true,
+        userId: "you@example.com",
+        tags: { kangaroo: 2 },
       },
       {
         url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
         fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
         s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
-        isOwner: true
+        isOwner: true,
+        userId: "you@example.com",
+        tags: { koala: 1, emu: 2 },
       },
       {
         url: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
         fullUrl: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
         s3Url: "s3://mock-bucket/images/uuid-3/file3.jpg",
-        isOwner: false
+        isOwner: false,
+        userId: "other@example.com",
+        tags: { dingo: 1 },
       },
     ]), 1000))
   }
@@ -232,6 +242,8 @@ export function SearchContainer() {
       fullUrl: item.file_url_http,
       s3Url: item.file_url,
       isOwner: item.user_id === userEmail,
+      userId: item.user_id,
+      tags: item.tags || {},
     }))
   }
 
@@ -248,6 +260,8 @@ export function SearchContainer() {
         fullUrl: data.file_url_http,
         s3Url: data.file_url,
         isOwner: data.user_id === userEmail,
+        userId: data.user_id,
+        tags: data.tags || {},
       }
     ]
   }
@@ -259,13 +273,17 @@ export function SearchContainer() {
         url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
         fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
         s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
-        isOwner: true
+        isOwner: true,
+        userId: "you@example.com",
+        tags: { kangaroo: 1 },
       },
       {
         url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
         fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
         s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
-        isOwner: false
+        isOwner: false,
+        userId: "other@example.com",
+        tags: { dingo: 2 },
       },
     ]), 1000))
   }
@@ -1061,13 +1079,31 @@ export function SearchContainer() {
                             </a>
                           </TableCell>
                           <TableCell>
-                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">—</span>
+                            {Object.keys(result.tags).length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {Object.keys(result.tags).map((tag) => (
+                                  <span key={tag} className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary uppercase tracking-wider">
+                                    {tag} ({result.tags[tag]})
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
-                            {result.isOwner
-                              ? <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{(session?.user?.name ?? session?.user?.email) || "You"}</span>
-                              : <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Other user</span>
-                            }
+                            {result.isOwner ? (
+                              <div className="flex flex-col">
+                                <span className="inline-flex w-fit items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary mb-0.5">
+                                  You
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">{result.userId}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground" title={result.userId}>
+                                {result.userId || "Other user"}
+                              </span>
+                            )}
                           </TableCell>
                         </TableRow>
                       )
