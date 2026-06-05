@@ -45,3 +45,21 @@ resource "google_project_service" "cloudresourcemanager" {
   service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 }
+
+resource "google_project_service" "artifactregistry" {
+  project            = var.gcp_project_id
+  service            = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "pubsub" {
+  project            = var.gcp_project_id
+  service            = "pubsub.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "eventarc" {
+  project            = var.gcp_project_id
+  service            = "eventarc.googleapis.com"
+  disable_on_destroy = false
+}

@@ -52,9 +52,16 @@ resource "google_cloudfunctions2_function" "accept_inference" {
   }
 
   service_config {
-    available_memory   = "128Mi"
-    timeout_seconds    = 30
-    ingress_settings   = "ALLOW_ALL"
+    available_memory      = "256Mi"
+    timeout_seconds       = 30
+    ingress_settings      = "ALLOW_ALL"
+    service_account_email = google_service_account.accept_inference_runtime.email
+
+    # IMAGE_TOPIC_ID is derived at runtime from the GCP project metadata
+    # and the fixed topic name constant in main.py — this avoids a known
+    # Terraform google provider bug where mixing environment_variables and
+    # secret_environment_variables causes "inconsistent final plan" errors.
+    # See: https://github.com/hashicorp/terraform-provider-google/issues/11096
 
     secret_environment_variables {
       key        = "CALLBACK_SECRET"
@@ -63,6 +70,27 @@ resource "google_cloudfunctions2_function" "accept_inference" {
       version    = "latest"
     }
   }
+}
+
+# ── Runtime SA + Pub/Sub publisher IAM ──────────────────────
+resource "google_service_account" "accept_inference_runtime" {
+  account_id   = "${var.app_name}-${var.environment}-ai-rt"
+  display_name = "EcoLens accept-inference runtime SA"
+}
+
+# Allow the runtime SA to read the callback secret (the default Compute SA
+# binding in persistent-gcp does not cover this dedicated SA).
+resource "google_secret_manager_secret_iam_member" "accept_inference_secret_accessor" {
+  project   = var.gcp_project_id
+  secret_id = "callback-secret"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.accept_inference_runtime.email}"
+}
+
+resource "google_pubsub_topic_iam_member" "accept_inference_publisher" {
+  topic  = google_pubsub_topic.image_inference_requests.name
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:${google_service_account.accept_inference_runtime.email}"
 }
 
 # Allow unauthenticated invocation (auth is handled at application level via X-Callback-Secret HMAC)
