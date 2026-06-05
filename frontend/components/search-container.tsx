@@ -789,21 +789,6 @@ export function SearchContainer() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {anySelected ? (
-                    <button
-                      onClick={clearSelection}
-                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Clear selection
-                    </button>
-                  ) : (
-                    <button
-                      onClick={selectAll}
-                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Select all
-                    </button>
-                  )}
                   {/* View mode toggle */}
                   <div className="flex items-center rounded-md border border-border overflow-hidden">
                     <button
@@ -874,7 +859,16 @@ export function SearchContainer() {
               </div>
 
               {viewMode === "grid" ? (
-                <div className="search-results-grid">
+                <>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={anySelected ? clearSelection : selectAll}
+                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {anySelected ? "Clear selection" : "Select all"}
+                    </button>
+                  </div>
+                  <div className="search-results-grid">
                   {results.map((result, index) => {
                     const isVideo =
                       result.s3Url.toLowerCase().endsWith(".mp4") ||
@@ -945,11 +939,26 @@ export function SearchContainer() {
                     )
                   })}
                 </div>
+                </>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10" />
+                      <TableHead className="w-10">
+                        <div
+                          onClick={anySelected ? clearSelection : selectAll}
+                          className={`relative flex h-5 w-5 cursor-pointer items-center justify-center rounded border-2 transition-colors bg-white ${
+                            anySelected ? "border-primary" : "border-border hover:border-primary"
+                          }`}
+                        >
+                          {anySelected && <div className="absolute inset-0 rounded bg-primary/15" />}
+                          {anySelected && (
+                            <svg className="relative z-10 h-3 w-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead className="w-16">Thumbnail</TableHead>
                       <TableHead>URL</TableHead>
                       <TableHead>Tags</TableHead>
