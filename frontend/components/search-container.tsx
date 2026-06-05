@@ -64,7 +64,7 @@ export function SearchContainer() {
   const [selectedUrls, setSelectedUrls] = React.useState<Set<string>>(new Set())
 
   // View mode state
-  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid")
+  const [viewMode, setViewMode] = React.useState<"grid" | "list">("list")
 
   // Edit Tags modal state
   const [showEditModal, setShowEditModal] = React.useState(false)
