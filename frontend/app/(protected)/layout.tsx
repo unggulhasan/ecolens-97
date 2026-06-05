@@ -4,6 +4,7 @@ import { UserDropdown } from "@/components/app-user-dropdown"
 import { NotificationDropdown } from "@/components/notification-dropdown"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
+import { ProtectedProviders } from "@/components/protected-providers"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export default async function ProtectedLayout({
@@ -35,7 +36,9 @@ export default async function ProtectedLayout({
                 <UserDropdown user={user} />
               </div>
             </nav>
-            <main className="flex flex-1 flex-col">{children}</main>
+            <main className="flex flex-1 flex-col">
+              <ProtectedProviders>{children}</ProtectedProviders>
+            </main>
           </SidebarInset>
         </div>
       </SidebarProvider>
