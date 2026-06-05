@@ -30,22 +30,37 @@ _config = Config(retries={"max_attempts": 5, "mode": "adaptive"})
 s3 = boto3.client("s3", region_name=REGION_NAME, config=_config)
 
 
+def _job_type(key: str) -> str:
+    """Return 'temporary' if the key is under tmp/, else 'permanent'."""
+    return "temporary" if key.startswith("tmp/") else "permanent"
+
+
+def _canonical_parts(key: str) -> tuple[str, str, str]:
+    """Return (media_type, file_id, filename) regardless of tmp/ prefix.
+
+    Handles:
+      [tmp/]images/{file_id}/{filename}
+      [tmp/]videos/{file_id}/{filename}
+    """
+    parts = key.split("/")
+    if parts[0] == "tmp":
+        parts = parts[1:]
+    media_type = parts[0] if parts else "unknown"
+    file_id = parts[1] if len(parts) >= 2 else "unknown"
+    filename = parts[-1] if parts else "unknown"
+    return media_type, file_id, filename
+
+
 def _thumbnail_key(original_key: str) -> str:
-    """Map  images/{file_id}/<name>  →  thumbnails/{file_id}/<name>."""
-    parts = original_key.split("/")
-    # expected: ["images", "<file_id>", "<filename>"]
-    file_id = parts[1] if len(parts) >= 3 else "unknown"
-    filename = parts[-1]
+    """Map  [tmp/]images/{file_id}/<name>  →  thumbnails/{file_id}/<name>.jpg."""
+    _, file_id, filename = _canonical_parts(original_key)
     base, _ = os.path.splitext(filename)
     return f"thumbnails/{file_id}/{base}.jpg"
 
 
 def _thumbnail_key_video(original_key: str) -> str:
-    """Map  videos/{file_id}/<name>  →  thumbnails/{file_id}/<name>.jpg."""
-    parts = original_key.split("/")
-    # expected: ["videos", "<file_id>", "<filename>"]
-    file_id = parts[1] if len(parts) >= 3 else "unknown"
-    filename = parts[-1]
+    """Map  [tmp/]videos/{file_id}/<name>  →  thumbnails/{file_id}/<name>.jpg."""
+    _, file_id, filename = _canonical_parts(original_key)
     base, _ = os.path.splitext(filename)
     return f"thumbnails/{file_id}/{base}.jpg"
 
@@ -86,9 +101,9 @@ def _thumbnail_exists(bucket: str, thumbnail_key: str) -> bool:
 
 
 def _extract_file_id(key: str) -> str:
-    """Extract file-id from key path images/{file_id}/{filename}."""
-    parts = key.split("/")
-    return parts[1] if len(parts) >= 3 else "unknown"
+    """Extract file-id from key path [tmp/]images/{file_id}/{filename}."""
+    _, file_id, _ = _canonical_parts(key)
+    return file_id
 
 
 def _process(bucket: str, key: str) -> dict:
@@ -165,6 +180,7 @@ def _process(bucket: str, key: str) -> dict:
             "source-key": decoded_key,
             "file-id": file_id,
             "file-type": "image",
+            "job-type": _job_type(decoded_key),
         },
     )
 
@@ -265,6 +281,7 @@ def _process_video(bucket: str, key: str) -> dict:
             "source-key": decoded_key,
             "file-id": file_id,
             "file-type": "video",
+            "job-type": _job_type(decoded_key),
         },
     )
 
@@ -291,6 +308,7 @@ def handle(event: dict, context) -> dict:
         return {"statusCode": 400, "body": "Missing object key in event"}
 
     decoded_key = urllib.parse.unquote_plus(key)
+
     if decoded_key.startswith("videos/"):
         result = _process_video(bucket, key)
     else:

@@ -43,6 +43,7 @@ def _emit_metadata_created(bucket: str, meta: dict, thumb_key: str) -> None:
                         "checksum": meta["checksum"],
                         "thumbnail_key": thumb_key,
                         "file_type": meta["file_type"],
+                        "job_type": meta["job_type"],
                     }),
                     "EventBusName": "default",
                 }
@@ -63,6 +64,7 @@ def _read_thumbnail_metadata(bucket: str, key: str) -> dict:
         "source_key": meta.get("source-key", ""),
         "file_id": meta.get("file-id", ""),
         "file_type": meta.get("file-type", "image"),
+        "job_type": meta.get("job-type", "permanent"),
     }
 
 

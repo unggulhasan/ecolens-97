@@ -69,7 +69,7 @@ resource "aws_iam_role_policy" "thumbnail_s3" {
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:HeadObject", "s3:PutObject"]
         Resource = "arn:aws:s3:::${local.persistent_state.media_bucket_name}/thumbnails/*"
-      }
+      },
     ]
   })
 }

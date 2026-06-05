@@ -99,3 +99,71 @@ resource "aws_lambda_permission" "thumbnail_eventbridge_video" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.trigger_thumbnail_video.arn
 }
+
+# Trigger on-tmp-uploaded Lambda when an object lands in the tmp/images/ prefix.
+resource "aws_cloudwatch_event_rule" "trigger_tmp_images" {
+  name        = "${var.app_name}-${var.environment}-on-tmp-uploaded-images-created"
+  description = "Trigger on-tmp-uploaded Lambda when an object is created in the tmp/images/ prefix."
+
+  event_pattern = jsonencode({
+    source      = ["aws.s3"]
+    detail-type = ["Object Created"]
+    detail = {
+      bucket = {
+        name = [local.persistent_state.media_bucket_name]
+      }
+      object = {
+        key = [{ prefix = "tmp/images/" }]
+      }
+    }
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "tmp_images" {
+  rule = aws_cloudwatch_event_rule.trigger_tmp_images.name
+  arn  = aws_lambda_function.tmp_uploaded.arn
+}
+
+resource "aws_lambda_permission" "tmp_images_eventbridge" {
+  statement_id  = "AllowEventBridgeInvokeTmpImages"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.tmp_uploaded.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.trigger_tmp_images.arn
+}
+
+# Trigger on-tmp-uploaded Lambda when an object lands in the tmp/videos/ prefix.
+resource "aws_cloudwatch_event_rule" "trigger_tmp_videos" {
+  name        = "${var.app_name}-${var.environment}-on-tmp-uploaded-videos-created"
+  description = "Trigger on-tmp-uploaded Lambda when an object is created in the tmp/videos/ prefix."
+
+  event_pattern = jsonencode({
+    source      = ["aws.s3"]
+    detail-type = ["Object Created"]
+    detail = {
+      bucket = {
+        name = [local.persistent_state.media_bucket_name]
+      }
+      object = {
+        key = [{ prefix = "tmp/videos/" }]
+      }
+    }
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "tmp_videos" {
+  rule = aws_cloudwatch_event_rule.trigger_tmp_videos.name
+  arn  = aws_lambda_function.tmp_uploaded.arn
+}
+
+resource "aws_lambda_permission" "tmp_videos_eventbridge" {
+  statement_id  = "AllowEventBridgeInvokeTmpVideos"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.tmp_uploaded.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.trigger_tmp_videos.arn
+}
