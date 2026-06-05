@@ -96,6 +96,7 @@ export type LookupByThumbnailResponse = {
   thumbnail_url?: string
   thumbnail_url_http?: string
   user_id: string
+  tags?: Record<string, number>
 }
 
 export async function lookupByThumbnail(
@@ -157,10 +158,17 @@ export async function searchBySpecies(
   return (data.results || []) as SearchBySpeciesResponseItem[]
 }
 
+export type PaginatedFilesResponse = {
+  page: number
+  page_size: number
+  total: number
+  results: SearchBySpeciesResponseItem[]
+}
+
 export async function listAllFiles(
   idToken: string,
   page: number = 1
-): Promise<SearchBySpeciesResponseItem[]> {
+): Promise<PaginatedFilesResponse> {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
   if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
 
@@ -169,6 +177,7 @@ export async function listAllFiles(
     headers: {
       Authorization: `Bearer ${idToken}`,
     },
+    cache: "no-store",
   })
 
   if (!response.ok) {
@@ -176,5 +185,10 @@ export async function listAllFiles(
   }
 
   const data = await response.json()
-  return (data.results || []) as SearchBySpeciesResponseItem[]
+  return {
+    page: data.page ?? page,
+    page_size: data.page_size ?? 10,
+    total: data.total ?? 0,
+    results: (data.results || []) as SearchBySpeciesResponseItem[],
+  }
 }

@@ -19,7 +19,15 @@ import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon, Tag01Icon } from 
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
 import { useSession } from "next-auth/react"
-import { manageTags, deleteFiles, lookupByThumbnail, searchBySpecies, listAllFiles } from "@/lib/api"
+import {
+  manageTags,
+  deleteFiles,
+  lookupByThumbnail,
+  searchBySpecies,
+  listAllFiles,
+  type SearchBySpeciesResponseItem,
+} from "@/lib/api"
+import { SearchResultsPagination } from "@/components/search-results-pagination"
 
 type TagCountInput = {
   id: string
@@ -34,6 +42,12 @@ type SearchResult = {
   isOwner: boolean
   userId: string
   tags: Record<string, number>
+}
+
+type PaginationMeta = {
+  page: number
+  pageSize: number
+  total: number
 }
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
@@ -61,6 +75,7 @@ export function SearchContainer() {
   const [searching, setSearching] = React.useState<boolean>(false)
   const [error, setError] = React.useState<string | null>(null)
   const [results, setResults] = React.useState<SearchResult[] | null>(null)
+  const [pagination, setPagination] = React.useState<PaginationMeta | null>(null)
 
   // Selection state
   const [selectedUrls, setSelectedUrls] = React.useState<Set<string>>(new Set())
@@ -95,38 +110,64 @@ export function SearchContainer() {
     setSelectedUrls(new Set())
   }, [results])
 
-  // Load latest files on mount as default state
+  const formatApiResults = React.useCallback(
+    (items: SearchBySpeciesResponseItem[]): SearchResult[] => {
+      const userEmail = session?.user?.email || ""
+      return items.map((item) => ({
+        url: item.thumbnail_url_http || item.file_url_http,
+        fullUrl: item.file_url_http,
+        s3Url: item.file_url,
+        isOwner: item.user_id === userEmail,
+        userId: item.user_id,
+        tags: item.tags || {},
+      }))
+    },
+    [session?.user?.email]
+  )
+
+  const loadAllFiles = React.useCallback(
+    async (page: number) => {
+      const idToken = (session as any)?.idToken as string
+      if (!idToken) return
+
+      setSearching(true)
+      setError(null)
+
+      try {
+        const data = await listAllFiles(idToken, page)
+        setResults(formatApiResults(data.results))
+        setPagination({
+          page: data.page,
+          pageSize: data.page_size,
+          total: data.total,
+        })
+      } catch (err: any) {
+        console.error("Failed to load files:", err)
+        setError(err.message || "Failed to load files.")
+        setResults([])
+      } finally {
+        setSearching(false)
+      }
+    },
+    [session, formatApiResults]
+  )
+
+  const handlePageChange = (page: number) => {
+    loadAllFiles(page)
+  }
+
+  const handleBrowseAllFiles = () => {
+    loadAllFiles(1)
+  }
+
+  // Load latest files on mount as default paginated browse state
   React.useEffect(() => {
     const idToken = (session as any)?.idToken as string
     if (!idToken || hasFetchedRef.current) return
 
     hasFetchedRef.current = true
-
-    const loadLatestFiles = async () => {
-      setSearching(true)
-      setError(null)
-      try {
-        const data = await listAllFiles(idToken)
-        const userEmail = session?.user?.email || ""
-        const formattedResults = data.map((item) => ({
-          url: item.thumbnail_url_http || item.file_url_http,
-          fullUrl: item.file_url_http,
-          s3Url: item.file_url,
-          isOwner: item.user_id === userEmail,
-          userId: item.user_id,
-          tags: item.tags || {},
-        }))
-        setResults(formattedResults)
-      } catch (err: any) {
-        console.error("Failed to load latest files:", err)
-        setError(err.message || "Failed to load latest files.")
-      } finally {
-        setSearching(false)
-      }
-    }
-
-    loadLatestFiles()
-  }, [session])
+    loadAllFiles(1)
+  }, [session, loadAllFiles])
 
   const toggleSelect = (url: string) => {
     setSelectedUrls((prev) => {
@@ -297,6 +338,7 @@ export function SearchContainer() {
     setSearching(true)
     setError(null)
     setResults(null)
+    setPagination(null)
 
     try {
       let data: SearchResult[] = []
@@ -389,17 +431,24 @@ export function SearchContainer() {
 
     try {
       const data = await deleteFiles(idToken, { urls })
-      
-      // Filter out successfully deleted files from the local results list
-      const deletedSet = new Set(data.deleted)
-      setResults((prev) => prev ? prev.filter((r) => !deletedSet.has(r.s3Url)) : prev)
-      
-      // Update selectedUrls to clear successfully deleted items
+
       setSelectedUrls((prev) => {
         const next = new Set(prev)
-        data.deleted.forEach(url => next.delete(url))
+        data.deleted.forEach((url) => next.delete(url))
         return next
       })
+
+      if (pagination) {
+        const newTotal = Math.max(0, pagination.total - data.deleted.length)
+        const totalPages = Math.max(1, Math.ceil(newTotal / pagination.pageSize))
+        const targetPage = Math.min(pagination.page, totalPages)
+        await loadAllFiles(targetPage)
+      } else {
+        const deletedSet = new Set(data.deleted)
+        setResults((prev) =>
+          prev ? prev.filter((r) => !deletedSet.has(r.s3Url)) : prev
+        )
+      }
 
       if (data.failed.length > 0) {
         const failedMsg = data.failed.map(f => `${f.url}: ${f.reason}`).join("; ")
@@ -881,10 +930,27 @@ export function SearchContainer() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <h3 className="text-sm font-semibold">Search Results</h3>
+                  {pagination && (
+                    <span className="text-xs text-muted-foreground">
+                      All files
+                    </span>
+                  )}
                   {anySelected && (
                     <span className="text-xs text-muted-foreground">
                       {selectedCount} selected
                     </span>
+                  )}
+                  {!pagination && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={handleBrowseAllFiles}
+                      disabled={searching}
+                    >
+                      View all files
+                    </Button>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -1151,16 +1217,35 @@ export function SearchContainer() {
                   </TableBody>
                 </Table>
               )}
+
+              {pagination && (
+                <SearchResultsPagination
+                  page={pagination.page}
+                  pageSize={pagination.pageSize}
+                  total={pagination.total}
+                  loading={searching}
+                  onPageChange={handlePageChange}
+                />
+              )}
             </div>
           )}
 
-          {results && results.length === 0 && (
+          {results && results.length === 0 && !searching && (
             <div className="mt-6 border-t pt-6">
               <div className="search-no-results">
                 <p className="text-muted-foreground">
-                  No matching files found.
+                  {pagination ? "No files on this page." : "No matching files found."}
                 </p>
               </div>
+              {pagination && (
+                <SearchResultsPagination
+                  page={pagination.page}
+                  pageSize={pagination.pageSize}
+                  total={pagination.total}
+                  loading={searching}
+                  onPageChange={handlePageChange}
+                />
+              )}
             </div>
           )}
         </CardContent>
