@@ -32,10 +32,10 @@ resource "aws_lambda_permission" "thumbnail_eventbridge" {
   source_arn    = aws_cloudwatch_event_rule.trigger_thumbnail.arn
 }
 
-# Trigger metadata Lambda when a thumbnail lands in the thumbnails/ prefix.
+# Trigger metadata Lambda when a thumbnail lands in thumbnails/ or a video lands in videos/.
 resource "aws_cloudwatch_event_rule" "trigger_metadata" {
   name        = "${var.app_name}-${var.environment}-on-thumbnail-created-thumb-created"
-  description = "Trigger metadata Lambda when a thumbnail is written to the thumbnails/ prefix."
+  description = "Trigger metadata Lambda when a thumbnail is written to thumbnails/ or a video to videos/."
 
   event_pattern = jsonencode({
     source      = ["aws.s3"]
@@ -45,7 +45,7 @@ resource "aws_cloudwatch_event_rule" "trigger_metadata" {
         name = [local.persistent_state.media_bucket_name]
       }
       object = {
-        key = [{ prefix = "thumbnails/" }]
+        key = [{ prefix = "thumbnails/" }, { prefix = "videos/" }]
       }
     }
   })

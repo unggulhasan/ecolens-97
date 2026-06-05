@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize } from "@/lib/file-utils"
 
-export type UploadStatus = "idle" | "checksumming" | "presigning" | "uploading" | "success" | "error"
+export type UploadStatus = "idle" | "converting" | "checksumming" | "presigning" | "uploading" | "success" | "error"
 
 type SelectedFileDetailsProps = {
   file: File
@@ -24,6 +24,7 @@ export function SelectedFileDetails({
   const isVideo = file.type.startsWith("video/")
 
   const getButtonText = () => {
+    if (uploadStatus === "converting") return "Converting HEIC..."
     if (uploadStatus === "checksumming") return "Verifying file..."
     if (uploadStatus === "presigning") return "Preparing upload..."
     if (uploadStatus === "uploading") return "Uploading..."

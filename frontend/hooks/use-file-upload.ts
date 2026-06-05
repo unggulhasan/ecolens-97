@@ -13,17 +13,43 @@ export function useFileUpload() {
   const [checksum, setChecksum] = React.useState<string | null>(null)
   const [uploadStatus, setUploadStatus] = React.useState<UploadStatus>("idle")
 
-  const validateAndSetFile = React.useCallback((file: File) => {
+  const validateAndSetFile = React.useCallback(async (file: File) => {
     setError(null)
     setUploadStatus("idle")
 
-    const errorMsg = validateUploadedFile(file, MAX_SIZE_BYTES)
+    let targetFile = file
+    const isHeic = file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif")
+
+    if (isHeic) {
+      setUploadStatus("converting")
+      try {
+        const heic2anyModule = await import("heic2any")
+        const heic2any = heic2anyModule.default
+        const converted = await heic2any({
+          blob: file,
+          toType: "image/jpeg",
+          quality: 0.85,
+        })
+        const blobResult = Array.isArray(converted) ? converted[0] : converted
+        targetFile = new File([blobResult], file.name.replace(/\.(heic|heif)$/i, ".jpg"), {
+          type: "image/jpeg",
+        })
+        setUploadStatus("idle")
+      } catch (err: any) {
+        console.error("HEIC conversion error:", err)
+        setError("Failed to convert HEIC image. Please try uploading a JPG or PNG.")
+        setUploadStatus("error")
+        return
+      }
+    }
+
+    const errorMsg = validateUploadedFile(targetFile, MAX_SIZE_BYTES)
     if (errorMsg) {
       setError(errorMsg)
       return
     }
 
-    setSelectedFile(file)
+    setSelectedFile(targetFile)
   }, [])
 
   const { dragActive, handleDrag, handleDrop } = useFileDragAndDrop(validateAndSetFile)
@@ -88,7 +114,7 @@ export function useFileUpload() {
     }
   }, [selectedFile])
 
-  const isPending = uploadStatus === "checksumming" || uploadStatus === "presigning" || uploadStatus === "uploading"
+  const isPending = uploadStatus === "converting" || uploadStatus === "checksumming" || uploadStatus === "presigning" || uploadStatus === "uploading"
   const hasSelectedFile = !!selectedFile
 
   return {
