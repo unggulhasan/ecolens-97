@@ -109,6 +109,8 @@ def run_video_job():
             frame_tags = perform_inference(frame_path)
             # Update the unique estimate using max count per animal across frames.
             for animal_name, count in frame_tags.items():
+                if animal_name is None:
+                    continue
                 current_max = unique_count_estimate.get(animal_name, 0)
                 unique_count_estimate[animal_name] = max(current_max, count)
 
