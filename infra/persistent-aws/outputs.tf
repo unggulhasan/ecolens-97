@@ -39,23 +39,13 @@ output "base_image_uri" {
 }
 
 # ── Secrets Manager outputs ────────────────────────────────
-output "gcp_sa_key_secret_arn" {
-  description = "ARN of the GCP service account key secret"
-  value       = aws_secretsmanager_secret.gcp_sa_key.arn
-}
-
-output "eb_client_secret_arn" {
-  description = "ARN of the EventBridge client secret"
-  value       = aws_secretsmanager_secret.eventbridge_client_secret.arn
-}
-
-output "eb_client_secret_value" {
-  description = "The EventBridge client secret (sensitive — passed to Connection)"
-  value       = var.eventbridge_client_secret
-  sensitive   = true
-}
-
 output "callback_secret_arn" {
-  description = "ARN of the GCP callback HMAC secret (AWS side)"
+  description = "ARN of the callback HMAC secret (AWS side, for AWS ↔ GCP cross-cloud auth)"
   value       = aws_secretsmanager_secret.callback_secret.arn
+}
+
+output "callback_secret_value" {
+  description = "The callback secret value (sensitive — used by EventBridge API Key auth for AWS → GCP)"
+  value       = var.callback_secret
+  sensitive   = true
 }

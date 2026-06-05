@@ -20,7 +20,12 @@ MEDIA_BUCKET_NAME = os.environ["MEDIA_BUCKET_NAME"]
 DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 EVENT_BUS_NAME = os.environ.get("EVENT_BUS_NAME", "default")
 
-s3 = boto3.client("s3")
+REGION_NAME = os.environ.get("REGION_NAME", "ap-southeast-4")
+s3 = boto3.client(
+    "s3",
+    region_name=REGION_NAME,
+    endpoint_url=f"https://s3.{REGION_NAME}.amazonaws.com",
+)
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 events = boto3.client("events")

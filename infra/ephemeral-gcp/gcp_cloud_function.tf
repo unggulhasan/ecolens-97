@@ -3,8 +3,21 @@
 #
 # Deploys the accept-inference function from the shared function
 # source bucket (owned by persistent workspace).  The function
-# is triggered by EventBridge via API Destination (OIDC auth).
+# is triggered by EventBridge via API Destination (API Key auth
+# with shared callback_secret, validated at application level).
 # ─────────────────────────────────────────────────────────────
+
+data "google_cloud_run_v2_service" "accept_inference_backing" {
+  name     = google_cloudfunctions2_function.accept_inference.name
+  location = google_cloudfunctions2_function.accept_inference.location
+}
+
+resource "google_cloud_run_v2_service_iam_member" "accept_invoker_all_users_run" {
+  name     = data.google_cloud_run_v2_service.accept_inference_backing.name
+  location = data.google_cloud_run_v2_service.accept_inference_backing.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
 
 # ── Zip the function source ────────────────────────────────
 data "archive_file" "accept_inference_source" {
@@ -23,7 +36,7 @@ resource "google_storage_bucket_object" "accept_inference_archive" {
 # ── Cloud Function (2nd gen) ────────────────────────────────
 resource "google_cloudfunctions2_function" "accept_inference" {
   name        = "${var.app_name}-${var.environment}-accept-inference"
-  description = "Accepts inference requests from EventBridge"
+  description = "Accepts inference requests from EventBridge (API Key auth)"
   location    = var.gcp_region
 
   build_config {
@@ -42,17 +55,23 @@ resource "google_cloudfunctions2_function" "accept_inference" {
     available_memory   = "128Mi"
     timeout_seconds    = 30
     ingress_settings   = "ALLOW_ALL"
+
+    secret_environment_variables {
+      key        = "CALLBACK_SECRET"
+      project_id = var.gcp_project_id
+      secret     = "callback-secret"
+      version    = "latest"
+    }
   }
 }
 
-# ── Restrict invocation to the EventBridge service account ──
-resource "google_cloudfunctions2_function_iam_member" "accept_inference_invoker" {
+# Allow unauthenticated invocation (auth is handled at application level via X-Callback-Secret HMAC)
+resource "google_cloudfunctions2_function_iam_member" "accept_invoker_all_users" {
   project        = google_cloudfunctions2_function.accept_inference.project
   location       = google_cloudfunctions2_function.accept_inference.location
   cloud_function = google_cloudfunctions2_function.accept_inference.name
-
-  role   = "roles/cloudfunctions.invoker"
-  member = "serviceAccount:eventbridge-invoker@${var.gcp_project_id}.iam.gserviceaccount.com"
+  role           = "roles/cloudfunctions.invoker"
+  member         = "allUsers"
 }
 
 # ── Output ──────────────────────────────────────────────────

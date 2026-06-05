@@ -16,39 +16,10 @@ infra/
 
 ## Prerequisites
 
-### GCP one-time bootstrap (run once, by you)
-
-> Skip if the `eventbridge-invoker` service account and `sa-key.json` already exist.
-
-```bash
-gcloud config set project ecolens-498408
-
-# Enable APIs required for the service account + OIDC token flow
-gcloud services enable \
-  run.googleapis.com \
-  iam.googleapis.com \
-  iamcredentials.googleapis.com \
-  cloudresourcemanager.googleapis.com
-
-# Create the service account EventBridge uses to invoke the Cloud Function
-gcloud iam service-accounts create eventbridge-invoker \
-  --display-name="EventBridge Cloud Run Invoker" \
-  --description="Used by AWS EventBridge to invoke Cloud Functions via OIDC"
-
-# Verify
-gcloud iam service-accounts list --filter="email:eventbridge-invoker"
-
-# Download the key — keep this file secret, never commit it
-gcloud iam service-accounts keys create ./sa-key.json \
-  --iam-account=eventbridge-invoker@ecolens-498408.iam.gserviceaccount.com
-
-# Store the key somewhere safe outside the repo, e.g.:
-mv ./sa-key.json ~/.gcp/ecolens-sa-key.json
-```
-
 ### Generate the shared callback secret (run once, by you)
 
 This value must be the same in both `persistent-gcp` and `persistent-aws`.
+It is used for cross-cloud auth in both directions (AWS ↔ GCP).
 
 ```bash
 openssl rand -hex 32
@@ -84,19 +55,7 @@ terraform init
 terraform apply
 ```
 
-Requires `media_bucket_name`, `callback_secret` (same value as step 1), and `gcp_sa_key_json` in `terraform.tfvars`:
-
-```hcl
-gcp_sa_key_json = <<EOT
-{ ... contents of sa-key.json ... }
-EOT
-```
-
-Or pass on the CLI to avoid putting JSON in the tfvars file:
-
-```bash
-terraform apply -var="gcp_sa_key_json=$(cat ~/.gcp/ecolens-sa-key.json)"
-```
+Requires `media_bucket_name` and `callback_secret` (same value as step 1) in `terraform.tfvars`:
 
 Steps 1 and 2 have no dependency on each other and can run in parallel.
 
@@ -133,7 +92,6 @@ After steps 1–3 are complete, give your teammate:
 
 | Variable | How to get it |
 |---|---|
-| `gcp_sa_key_json` | Contents of `~/.gcp/ecolens-sa-key.json` |
 | `callback_secret` | The value you generated in prerequisites |
 | `gcp_function_url` | `terraform output gcp_function_url` from `ephemeral-gcp` |
 
@@ -142,11 +100,12 @@ After steps 1–3 are complete, give your teammate:
 ## Verify Cloud Function auth (optional)
 
 ```bash
-gcloud auth activate-service-account \
-  eventbridge-invoker@ecolens-498408.iam.gserviceaccount.com \
-  --key-file=~/.gcp/ecolens-sa-key.json
+# Without the secret — should return 401
+curl -i $(cd infra/ephemeral-gcp && terraform output -raw gcp_function_url)
 
-curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+# With the correct callback_secret — should return 200
+curl -i \
+  -H "X-Callback-Secret: $(cd infra/persistent-gcp && terraform output -raw callback_secret 2>/dev/null || echo '<your-callback-secret>')" \
   $(cd infra/ephemeral-gcp && terraform output -raw gcp_function_url)
 ```
 

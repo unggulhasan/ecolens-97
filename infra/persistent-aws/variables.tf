@@ -27,20 +27,8 @@ variable "media_bucket_name" {
   type        = string
 }
 
-variable "gcp_sa_key_json" {
-  description = "GCP service account key JSON for EventBridge OIDC token generation"
-  type        = string
-  sensitive   = true
-}
-
 variable "callback_secret" {
-  description = "Shared HMAC secret for GCP-to-AWS callback authentication"
-  type        = string
-  sensitive   = true
-}
-
-variable "eventbridge_client_secret" {
-  description = "Client secret that EventBridge presents to the Token Proxy Lambda"
+  description = "Shared HMAC secret for cross-cloud authentication (AWS ↔ GCP, both directions)"
   type        = string
   sensitive   = true
 }

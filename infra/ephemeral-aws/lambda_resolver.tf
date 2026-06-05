@@ -28,6 +28,7 @@ resource "aws_lambda_function" "resolver" {
       MEDIA_BUCKET_NAME   = local.persistent_state.media_bucket_name
       DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
       EVENT_BUS_NAME      = "default"
+      REGION_NAME           = var.aws_region
     }
   }
 
