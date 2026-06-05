@@ -48,6 +48,23 @@ export function countOthersInSelection(
   ).length
 }
 
+export type TagUpdate = {
+  file_url: string
+  final_tags: Record<string, number>
+}
+
+export function applyTagUpdates(
+  results: FileResult[] | null,
+  updates: TagUpdate[]
+): FileResult[] | null {
+  if (!results) return results
+  const updateMap = new Map(updates.map((u) => [u.file_url, u.final_tags]))
+  return results.map((r) => {
+    const tags = updateMap.get(r.s3Url)
+    return tags !== undefined ? { ...r, tags } : r
+  })
+}
+
 export function canDeleteSelection(
   results: FileResult[] | null,
   urls: Iterable<string>

@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { listAllFiles } from "@/lib/api"
 import {
+  applyTagUpdates,
   formatFileResults,
   type FileResult,
   type PaginationMeta,
+  type TagUpdate,
 } from "@/lib/file-results"
 
 export type HomeTab = "all" | "mine"
@@ -27,6 +29,7 @@ type HomeFilesContextValue = {
   loading: boolean
   changePage: (page: number) => Promise<void>
   refreshAfterDelete: (deletedCount: number) => Promise<void>
+  applyTagUpdates: (updates: TagUpdate[]) => void
 }
 
 const INITIAL_TAB_STATE: TabState = {
@@ -143,6 +146,21 @@ export function HomeFilesProvider({ children }: { children: React.ReactNode }) {
     [activeTab, fetchTab]
   )
 
+  const applyTagUpdatesToCache = React.useCallback((updates: TagUpdate[]) => {
+    if (updates.length === 0) return
+
+    setTabStates((prev) => ({
+      all: {
+        ...prev.all,
+        results: applyTagUpdates(prev.all.results, updates),
+      },
+      mine: {
+        ...prev.mine,
+        results: applyTagUpdates(prev.mine.results, updates),
+      },
+    }))
+  }, [])
+
   const handleSetActiveTab = React.useCallback(
     (tab: HomeTab) => {
       setActiveTab(tab)
@@ -172,6 +190,7 @@ export function HomeFilesProvider({ children }: { children: React.ReactNode }) {
       loading,
       changePage,
       refreshAfterDelete,
+      applyTagUpdates: applyTagUpdatesToCache,
     }),
     [
       activeTab,
@@ -180,6 +199,7 @@ export function HomeFilesProvider({ children }: { children: React.ReactNode }) {
       loading,
       changePage,
       refreshAfterDelete,
+      applyTagUpdatesToCache,
     ]
   )
 

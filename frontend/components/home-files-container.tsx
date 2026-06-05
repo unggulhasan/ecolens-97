@@ -24,6 +24,7 @@ export function HomeFilesContainer() {
     loading,
     changePage,
     refreshAfterDelete,
+    applyTagUpdates,
   } = useHomeFiles()
 
   const currentTab = tabStates[activeTab]
@@ -63,6 +64,7 @@ export function HomeFilesContainer() {
           pagination={currentTab.pagination}
           onPageChange={changePage}
           onAfterDelete={refreshAfterDelete}
+          onAfterTagsUpdate={applyTagUpdates}
           emptyMessage={
             activeTab === "mine"
               ? "You have not uploaded any files yet."

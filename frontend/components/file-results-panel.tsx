@@ -21,6 +21,8 @@ import { SearchResultsPagination } from "@/components/search-results-pagination"
 import {
   type FileResult,
   type PaginationMeta,
+  type TagUpdate,
+  applyTagUpdates,
   canDeleteSelection,
   countOthersInSelection,
   isVideoFile,
@@ -35,6 +37,7 @@ type FileResultsPanelProps = {
   onPageChange?: (page: number) => void
   onResultsChange?: React.Dispatch<React.SetStateAction<FileResult[] | null>>
   onAfterDelete?: (deletedCount: number) => void | Promise<void>
+  onAfterTagsUpdate?: (updates: TagUpdate[]) => void
   emptyMessage?: string
 }
 
@@ -47,6 +50,7 @@ export function FileResultsPanel({
   onPageChange,
   onResultsChange,
   onAfterDelete,
+  onAfterTagsUpdate,
   emptyMessage,
 }: FileResultsPanelProps) {
   const { data: session } = useSession()
@@ -75,9 +79,22 @@ export function FileResultsPanel({
   const othersInSelection = countOthersInSelection(results, selectedUrls)
   const canDelete = canDeleteSelection(results, selectedUrls)
 
+  const resultFileKeys = React.useMemo(
+    () => (results ?? []).map((r) => r.s3Url).join("\n"),
+    [results]
+  )
+
   React.useEffect(() => {
     setSelectedUrls(new Set())
-  }, [results])
+  }, [resultFileKeys])
+
+  const continueEditingTags = React.useCallback(() => {
+    setEditResult(null)
+    setEditTagsInput("")
+    requestAnimationFrame(() => {
+      document.getElementById("edit-tags-input")?.focus()
+    })
+  }, [])
 
   const toggleSelect = (url: string) => {
     setSelectedUrls((prev) => {
@@ -123,6 +140,15 @@ export function FileResultsPanel({
 
     try {
       const data = await manageTags(idToken, { file_urls, tags, operation: editOperation })
+
+      if (data.updated.length > 0) {
+        if (onAfterTagsUpdate) {
+          onAfterTagsUpdate(data.updated)
+        } else if (onResultsChange) {
+          onResultsChange((prev) => applyTagUpdates(prev, data.updated))
+        }
+      }
+
       if (data.failed.length > 0) {
         const failedMsg = data.failed.map((f) => `${f.url}: ${f.reason}`).join("; ")
         setEditResult(
@@ -272,29 +298,42 @@ export function FileResultsPanel({
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">Tags</label>
           <Input
+            id="edit-tags-input"
             placeholder="e.g. koala, dingo, wombat"
             value={editTagsInput}
             onChange={(e) => setEditTagsInput(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">Comma-separated list of tags.</p>
         </div>
-        {editResult ? (
+        {editResult?.startsWith("Successfully") ? (
           <>
             <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
               {editResult}
             </div>
             <div className="flex justify-end gap-2 pt-1">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setEditResult(null)
-                  setEditTagsInput("")
-                }}
-              >
+              <Button variant="outline" onClick={continueEditingTags}>
                 Continue
               </Button>
               <Button onClick={closeEditModal} className="upload-action-button">
                 Done
+              </Button>
+            </div>
+          </>
+        ) : editResult ? (
+          <>
+            <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+              {editResult}
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={closeEditModal}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEditTags}
+                disabled={!editTagsInput.trim() || editLoading}
+                className="upload-action-button"
+              >
+                {editLoading ? "Applying..." : "Try Again"}
               </Button>
             </div>
           </>
