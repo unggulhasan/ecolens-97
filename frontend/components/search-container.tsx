@@ -17,6 +17,8 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon, Tag01Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
+import { useSession } from "next-auth/react"
+import { manageTags, deleteFiles } from "@/lib/api"
 
 type TagCountInput = {
   id: string
@@ -32,6 +34,7 @@ type SearchResult = {
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
 export function SearchContainer() {
+  const { data: session } = useSession()
   const [activeTab, setActiveTab] = React.useState<string>("tags-count")
   const nextRowIdRef = React.useRef<number>(2)
 
@@ -215,14 +218,43 @@ export function SearchContainer() {
     }
   }
 
-  // ---- Edit Tags handler (placeholder) ----
+  // ---- Edit Tags handler ----
   const handleEditTags = async () => {
     setEditLoading(true)
     setEditResult(null)
-    // TODO: wire up manageTags() from lib/api.ts
-    await new Promise((r) => setTimeout(r, 800))
-    setEditResult(`Successfully ${editOperation === 1 ? "added" : "removed"} tags on ${selectedCount} file(s).`)
-    setEditLoading(false)
+
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      setEditResult("Error: Not authenticated. Please log in again.")
+      setEditLoading(false)
+      return
+    }
+
+    const file_urls = Array.from(selectedUrls)
+    const tags = editTagsInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+
+    if (tags.length === 0) {
+      setEditResult("Error: Please enter at least one tag.")
+      setEditLoading(false)
+      return
+    }
+
+    try {
+      const data = await manageTags(idToken, { file_urls, tags, operation: editOperation })
+      if (data.failed.length > 0) {
+        const failedMsg = data.failed.map(f => `${f.url}: ${f.reason}`).join("; ")
+        setEditResult(`Completed with errors. Updated: ${data.updated.length}, Failed: ${failedMsg}`)
+      } else {
+        setEditResult(`Successfully ${editOperation === 1 ? "added" : "removed"} tags on ${data.updated.length} file(s).`)
+      }
+    } catch (err: any) {
+      setEditResult(`Error: ${err.message || "An unexpected error occurred."}`)
+    } finally {
+      setEditLoading(false)
+    }
   }
 
   const closeEditModal = () => {
@@ -232,16 +264,45 @@ export function SearchContainer() {
     setEditResult(null)
   }
 
-  // ---- Delete handler (placeholder) ----
+  // ---- Delete handler ----
   const handleDelete = async () => {
     setDeleteLoading(true)
     setDeleteResult(null)
-    // TODO: wire up deleteFiles() from lib/api.ts
-    await new Promise((r) => setTimeout(r, 800))
-    setResults((prev) => prev ? prev.filter((r) => !selectedUrls.has(r.url)) : prev)
-    setDeleteResult(`Successfully deleted ${selectedCount} file(s).`)
-    setSelectedUrls(new Set())
-    setDeleteLoading(false)
+
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      setDeleteResult("Error: Not authenticated. Please log in again.")
+      setDeleteLoading(false)
+      return
+    }
+
+    const urls = Array.from(selectedUrls)
+
+    try {
+      const data = await deleteFiles(idToken, { urls })
+      
+      // Filter out successfully deleted files from the local results list
+      const deletedSet = new Set(data.deleted)
+      setResults((prev) => prev ? prev.filter((r) => !deletedSet.has(r.url)) : prev)
+      
+      // Update selectedUrls to clear successfully deleted items
+      setSelectedUrls((prev) => {
+        const next = new Set(prev)
+        data.deleted.forEach(url => next.delete(url))
+        return next
+      })
+
+      if (data.failed.length > 0) {
+        const failedMsg = data.failed.map(f => `${f.url}: ${f.reason}`).join("; ")
+        setDeleteResult(`Completed with errors. Deleted: ${data.deleted.length}, Failed: ${failedMsg}`)
+      } else {
+        setDeleteResult(`Successfully deleted ${data.deleted.length} file(s).`)
+      }
+    } catch (err: any) {
+      setDeleteResult(`Error: ${err.message || "An unexpected error occurred."}`)
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const closeDeleteModal = () => {
@@ -397,9 +458,15 @@ export function SearchContainer() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="tags-count" onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            defaultValue="tags-count"
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <TabsList className="search-tabs-list">
-              <TabsTrigger value="tags-count">Tags with Minimum Count</TabsTrigger>
+              <TabsTrigger value="tags-count">
+                Tags with Minimum Count
+              </TabsTrigger>
               <TabsTrigger value="tags-only">Tags Only</TabsTrigger>
               <TabsTrigger value="thumbnail">Thumbnail&#39;s URL</TabsTrigger>
               <TabsTrigger value="file">File</TabsTrigger>
@@ -408,11 +475,26 @@ export function SearchContainer() {
             {/* Tab 1 */}
             <TabsContent value="tags-count" className="space-y-4">
               <div className="search-input-group">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Query Tags</span>
-                  <Button onClick={addTagRow} variant="outline" size="sm" className="h-8">
-                    <svg className="size-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  <Button
+                    onClick={addTagRow}
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                  >
+                    <svg
+                      className="mr-1 size-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 4v16m8-8H4"
+                      />
                     </svg>
                     Add Tag
                   </Button>
@@ -423,7 +505,9 @@ export function SearchContainer() {
                       <Input
                         placeholder="Tag name (e.g. kangaroo)"
                         value={row.tag}
-                        onChange={(e) => updateTagRow(row.id, "tag", e.target.value)}
+                        onChange={(e) =>
+                          updateTagRow(row.id, "tag", e.target.value)
+                        }
                         className="flex-1"
                       />
                       <Input
@@ -432,10 +516,18 @@ export function SearchContainer() {
                         value={row.count}
                         onChange={(e) => {
                           const val = e.target.value
-                          updateTagRow(row.id, "count", val === "" ? "" : parseInt(val) || "")
+                          updateTagRow(
+                            row.id,
+                            "count",
+                            val === "" ? "" : parseInt(val) || ""
+                          )
                         }}
                         onBlur={() => {
-                          if (row.count === "" || isNaN(Number(row.count)) || Number(row.count) < 1) {
+                          if (
+                            row.count === "" ||
+                            isNaN(Number(row.count)) ||
+                            Number(row.count) < 1
+                          ) {
                             updateTagRow(row.id, "count", 1)
                           }
                         }}
@@ -446,10 +538,20 @@ export function SearchContainer() {
                         size="icon"
                         onClick={() => removeTagRow(row.id)}
                         disabled={tagsCount.length === 1}
-                        className="text-destructive hover:bg-destructive/10 shrink-0"
+                        className="shrink-0 text-destructive hover:bg-destructive/10"
                       >
-                        <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <svg
+                          className="size-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </Button>
                     </div>
@@ -478,7 +580,7 @@ export function SearchContainer() {
               <div className="search-input-group">
                 <span className="text-sm font-medium">Thumbnail URL</span>
                 <Input
-                  placeholder="s3://aussie-ecolens-s3-media/images/thumbnail.png"
+                  placeholder="s3://aussie-ecolens-s3-media/thumbnails/thumbnail.png"
                   value={thumbnailUrl}
                   onChange={(e) => setThumbnailUrl(e.target.value)}
                 />
@@ -498,7 +600,12 @@ export function SearchContainer() {
                   onDragOver={selectedFile ? undefined : handleDrag}
                   onDragLeave={selectedFile ? undefined : handleDrag}
                   onDrop={selectedFile ? undefined : handleDrop}
-                  onClick={selectedFile ? undefined : () => document.getElementById("search-file-input")?.click()}
+                  onClick={
+                    selectedFile
+                      ? undefined
+                      : () =>
+                          document.getElementById("search-file-input")?.click()
+                  }
                 >
                   <input
                     type="file"
@@ -509,29 +616,48 @@ export function SearchContainer() {
                     onChange={handleFileChange}
                   />
                   <div className="upload-icon-wrapper">
-                    <HugeiconsIcon icon={Upload01Icon} className="size-8" strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={Upload01Icon}
+                      className="size-8"
+                      strokeWidth={2}
+                    />
                   </div>
-                  <p className="font-medium text-sm">Drag & drop your file here, or click to select</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Supports image and video files</p>
+                  <p className="text-sm font-medium">
+                    Drag & drop your file here, or click to select
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Supports image and video files
+                  </p>
                 </div>
                 {selectedFile && (
-                  <div className="space-y-3 mt-4">
+                  <div className="mt-4 space-y-3">
                     <h3 className="text-sm font-semibold">Selected File</h3>
                     <div className="selected-file-card">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex-shrink-0 text-muted-foreground">
                           <HugeiconsIcon
-                            icon={selectedFile.type.startsWith("video/") ? Video01Icon : Image01Icon}
+                            icon={
+                              selectedFile.type.startsWith("video/")
+                                ? Video01Icon
+                                : Image01Icon
+                            }
                             className="size-5"
                           />
                         </div>
-                        <span className="truncate font-medium">{selectedFile.name}</span>
-                        <span className="text-xs text-muted-foreground">({formatFileSize(selectedFile.size)})</span>
+                        <span className="truncate font-medium">
+                          {selectedFile.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          ({formatFileSize(selectedFile.size)})
+                        </span>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => { e.stopPropagation(); removeSelectedFile() }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeSelectedFile()
+                        }}
                         className="text-destructive hover:bg-destructive/10"
                       >
                         <HugeiconsIcon icon={Delete02Icon} className="size-4" />
@@ -543,14 +669,33 @@ export function SearchContainer() {
             </TabsContent>
 
             {/* Search button */}
-            <div className="flex flex-col gap-4 pt-6 border-t mt-6">
+            <div className="mt-6 flex flex-col gap-4 border-t pt-6">
               {error && <div className="upload-error">{error}</div>}
               <div className="flex justify-end">
-                <Button onClick={handleSearch} disabled={searching || isSearchDisabled} className="upload-action-button">
+                <Button
+                  onClick={handleSearch}
+                  disabled={searching || isSearchDisabled}
+                  className="upload-action-button"
+                >
                   {searching && (
-                    <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
-                      <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    <svg
+                      className="upload-spinner"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="upload-spinner-circle"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="upload-spinner-path"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
                     </svg>
                   )}
                   {searching ? "Searching..." : "Execute Search"}
@@ -570,21 +715,29 @@ export function SearchContainer() {
 
           {/* Results */}
           {results && results.length > 0 && (
-            <div className="space-y-3 pt-6 border-t mt-6">
-              <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="mt-6 space-y-3 border-t pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <h3 className="text-sm font-semibold">Search Results</h3>
                   {anySelected && (
-                    <span className="text-xs text-muted-foreground">{selectedCount} selected</span>
+                    <span className="text-xs text-muted-foreground">
+                      {selectedCount} selected
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   {anySelected ? (
-                    <button onClick={clearSelection} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <button
+                      onClick={clearSelection}
+                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
                       Clear selection
                     </button>
                   ) : (
-                    <button onClick={selectAll} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <button
+                      onClick={selectAll}
+                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
                       Select all
                     </button>
                   )}
@@ -592,20 +745,34 @@ export function SearchContainer() {
                     size="sm"
                     variant="outline"
                     disabled={!anySelected}
-                    onClick={() => { setShowEditModal(true); setEditResult(null) }}
-                    className="flex items-center gap-1.5 h-8"
+                    onClick={() => {
+                      setShowEditModal(true)
+                      setEditResult(null)
+                    }}
+                    className="flex h-8 items-center gap-1.5"
                   >
-                    <HugeiconsIcon icon={Tag01Icon} className="size-3.5" strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={Tag01Icon}
+                      className="size-3.5"
+                      strokeWidth={2}
+                    />
                     Edit Tags
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={!anySelected}
-                    onClick={() => { setShowDeleteModal(true); setDeleteResult(null) }}
-                    className="flex items-center gap-1.5 h-8 text-destructive border-destructive/30 hover:bg-destructive/10 disabled:text-muted-foreground disabled:border-border"
+                    onClick={() => {
+                      setShowDeleteModal(true)
+                      setDeleteResult(null)
+                    }}
+                    className="flex h-8 items-center gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 disabled:border-border disabled:text-muted-foreground"
                   >
-                    <HugeiconsIcon icon={Delete02Icon} className="size-3.5" strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={Delete02Icon}
+                      className="size-3.5"
+                      strokeWidth={2}
+                    />
                     Delete Files
                   </Button>
                 </div>
@@ -613,7 +780,8 @@ export function SearchContainer() {
 
               <div className="search-results-grid">
                 {results.map((result, index) => {
-                  const isVideo = result.url.toLowerCase().endsWith(".mp4") ||
+                  const isVideo =
+                    result.url.toLowerCase().endsWith(".mp4") ||
                     result.url.toLowerCase().endsWith(".mov") ||
                     result.url.toLowerCase().endsWith(".avi")
                   const isSelected = selectedUrls.has(result.url)
@@ -624,26 +792,49 @@ export function SearchContainer() {
                       className={`search-result-card cursor-pointer select-none ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
                       onClick={() => toggleSelect(result.url)}
                     >
-                      <div className={`absolute top-2 left-2 z-10 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                        isSelected ? "border-primary" : "bg-white/80 border-white/80" }`}>
+                      <div
+                        className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
+                          isSelected
+                            ? "border-primary"
+                            : "border-white/80 bg-white/80"
+                        }`}
+                      >
                         {isSelected && (
-                      <div className="absolute inset-0 rounded bg-primary/15" />
+                          <div className="absolute inset-0 rounded bg-primary/15" />
                         )}
                         {isSelected && (
-                          <svg className="w-3 h-3 text-primary relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          <svg
+                            className="relative z-10 h-3 w-3 text-primary"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
-                          )}
+                        )}
                       </div>
                       {!result.isOwner && (
-                        <div className="absolute top-2 right-2 z-10 text-xs bg-black/50 text-white px-1.5 py-0.5 rounded">
+                        <div className="absolute top-2 right-2 z-10 rounded bg-black/50 px-1.5 py-0.5 text-xs text-white">
                           Not yours
                         </div>
                       )}
                       {isVideo ? (
-                        <video src={result.url} controls className="search-result-video" />
+                        <video
+                          src={result.url}
+                          controls
+                          className="search-result-video"
+                        />
                       ) : (
-                        <img src={result.url} alt={`Result ${index + 1}`} className="search-result-image" />
+                        <img
+                          src={result.url}
+                          alt={`Result ${index + 1}`}
+                          className="search-result-image"
+                        />
                       )}
                       <div className="search-result-overlay">
                         <a
@@ -664,9 +855,11 @@ export function SearchContainer() {
           )}
 
           {results && results.length === 0 && (
-            <div className="pt-6 border-t mt-6">
+            <div className="mt-6 border-t pt-6">
               <div className="search-no-results">
-                <p className="text-muted-foreground">No matching files found.</p>
+                <p className="text-muted-foreground">
+                  No matching files found.
+                </p>
               </div>
             </div>
           )}
