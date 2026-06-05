@@ -17,6 +17,8 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon, Tag01Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
+import { useSession } from "next-auth/react"
+import { manageTags, deleteFiles } from "@/lib/api"
 
 type TagCountInput = {
   id: string
@@ -32,6 +34,7 @@ type SearchResult = {
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
 export function SearchContainer() {
+  const { data: session } = useSession()
   const [activeTab, setActiveTab] = React.useState<string>("tags-count")
   const nextRowIdRef = React.useRef<number>(2)
 
@@ -215,14 +218,43 @@ export function SearchContainer() {
     }
   }
 
-  // ---- Edit Tags handler (placeholder) ----
+  // ---- Edit Tags handler ----
   const handleEditTags = async () => {
     setEditLoading(true)
     setEditResult(null)
-    // TODO: wire up manageTags() from lib/api.ts
-    await new Promise((r) => setTimeout(r, 800))
-    setEditResult(`Successfully ${editOperation === 1 ? "added" : "removed"} tags on ${selectedCount} file(s).`)
-    setEditLoading(false)
+
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      setEditResult("Error: Not authenticated. Please log in again.")
+      setEditLoading(false)
+      return
+    }
+
+    const file_urls = Array.from(selectedUrls)
+    const tags = editTagsInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+
+    if (tags.length === 0) {
+      setEditResult("Error: Please enter at least one tag.")
+      setEditLoading(false)
+      return
+    }
+
+    try {
+      const data = await manageTags(idToken, { file_urls, tags, operation: editOperation })
+      if (data.failed.length > 0) {
+        const failedMsg = data.failed.map(f => `${f.url}: ${f.reason}`).join("; ")
+        setEditResult(`Completed with errors. Updated: ${data.updated.length}, Failed: ${failedMsg}`)
+      } else {
+        setEditResult(`Successfully ${editOperation === 1 ? "added" : "removed"} tags on ${data.updated.length} file(s).`)
+      }
+    } catch (err: any) {
+      setEditResult(`Error: ${err.message || "An unexpected error occurred."}`)
+    } finally {
+      setEditLoading(false)
+    }
   }
 
   const closeEditModal = () => {
@@ -232,16 +264,45 @@ export function SearchContainer() {
     setEditResult(null)
   }
 
-  // ---- Delete handler (placeholder) ----
+  // ---- Delete handler ----
   const handleDelete = async () => {
     setDeleteLoading(true)
     setDeleteResult(null)
-    // TODO: wire up deleteFiles() from lib/api.ts
-    await new Promise((r) => setTimeout(r, 800))
-    setResults((prev) => prev ? prev.filter((r) => !selectedUrls.has(r.url)) : prev)
-    setDeleteResult(`Successfully deleted ${selectedCount} file(s).`)
-    setSelectedUrls(new Set())
-    setDeleteLoading(false)
+
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      setDeleteResult("Error: Not authenticated. Please log in again.")
+      setDeleteLoading(false)
+      return
+    }
+
+    const urls = Array.from(selectedUrls)
+
+    try {
+      const data = await deleteFiles(idToken, { urls })
+      
+      // Filter out successfully deleted files from the local results list
+      const deletedSet = new Set(data.deleted)
+      setResults((prev) => prev ? prev.filter((r) => !deletedSet.has(r.url)) : prev)
+      
+      // Update selectedUrls to clear successfully deleted items
+      setSelectedUrls((prev) => {
+        const next = new Set(prev)
+        data.deleted.forEach(url => next.delete(url))
+        return next
+      })
+
+      if (data.failed.length > 0) {
+        const failedMsg = data.failed.map(f => `${f.url}: ${f.reason}`).join("; ")
+        setDeleteResult(`Completed with errors. Deleted: ${data.deleted.length}, Failed: ${failedMsg}`)
+      } else {
+        setDeleteResult(`Successfully deleted ${data.deleted.length} file(s).`)
+      }
+    } catch (err: any) {
+      setDeleteResult(`Error: ${err.message || "An unexpected error occurred."}`)
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const closeDeleteModal = () => {
