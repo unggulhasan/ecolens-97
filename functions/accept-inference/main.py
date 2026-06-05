@@ -11,11 +11,11 @@ from google.cloud import pubsub_v1
 # Set via Cloud Function environment variable from GCP Secret Manager.
 CALLBACK_SECRET = os.environ.get("CALLBACK_SECRET", "")
 
-# Fixed topic name — must match the Terraform resource name in image_processor.tf.
-# We derive the full topic path at cold start via the GCP metadata server so we
-# don't need to inject it as an env var (which triggers a provider bug when mixed
-# with secret_environment_variables).
-_TOPIC_NAME = "aussie-ecolens-prod-image-inference-requests"
+# Fixed topic names — must match the Terraform resource names in image/video_processor.tf.
+# Derived at cold start via the GCP metadata server to avoid Terraform provider bug
+# when mixing environment_variables + secret_environment_variables.
+_IMAGE_TOPIC_NAME = "aussie-ecolens-prod-image-inference-requests"
+_VIDEO_TOPIC_NAME = "aussie-ecolens-prod-video-inference-requests"
 
 
 def _gcp_project_id() -> str:
@@ -29,16 +29,27 @@ def _gcp_project_id() -> str:
     return resp.text
 
 
-# Resolved once at module load (cold start); empty until first request.
+def _get_project() -> str:
+    return os.environ.get("GOOGLE_CLOUD_PROJECT") or _gcp_project_id()
+
+
+# Resolved once at cold start.
 _IMAGE_TOPIC_ID: str = ""
+_VIDEO_TOPIC_ID: str = ""
 
 
-def _get_topic_id() -> str:
+def _get_image_topic_id() -> str:
     global _IMAGE_TOPIC_ID
     if not _IMAGE_TOPIC_ID:
-        project = os.environ.get("GOOGLE_CLOUD_PROJECT") or _gcp_project_id()
-        _IMAGE_TOPIC_ID = f"projects/{project}/topics/{_TOPIC_NAME}"
+        _IMAGE_TOPIC_ID = f"projects/{_get_project()}/topics/{_IMAGE_TOPIC_NAME}"
     return _IMAGE_TOPIC_ID
+
+
+def _get_video_topic_id() -> str:
+    global _VIDEO_TOPIC_ID
+    if not _VIDEO_TOPIC_ID:
+        _VIDEO_TOPIC_ID = f"projects/{_get_project()}/topics/{_VIDEO_TOPIC_NAME}"
+    return _VIDEO_TOPIC_ID
 
 # Lazily-initialised module-level publisher so warm invocations skip the
 # (relatively expensive) gRPC channel setup.
@@ -52,13 +63,20 @@ def _get_publisher() -> pubsub_v1.PublisherClient:
     return _publisher
 
 
-def _publish_image_inference(payload: dict) -> str:
-    """Publish a JSON payload to the image inference topic. Returns the message ID."""
-    topic_id = _get_topic_id()
+def _publish(topic_id: str, payload: dict) -> str:
+    """Publish a JSON payload to a Pub/Sub topic. Returns the message ID."""
     publisher = _get_publisher()
     data = json.dumps(payload).encode("utf-8")
     future = publisher.publish(topic_id, data=data)
     return future.result(timeout=10)
+
+
+def _publish_image_inference(payload: dict) -> str:
+    return _publish(_get_image_topic_id(), payload)
+
+
+def _publish_video_inference(payload: dict) -> str:
+    return _publish(_get_video_topic_id(), payload)
 
 
 @functions_framework.http
@@ -101,20 +119,29 @@ def accept(request):
     # Fan out to the appropriate worker via Pub/Sub.  Returning 200 quickly
     # is important — EventBridge treats anything else as a retryable failure.
     message_id: str | None = None
+    _payload = {
+        "file_id":       file_id,
+        "presigned_url": presigned_url,
+        "file_type":     file_type,
+        "job_type":      job_type,
+    }
+
     if file_type == "image":
+        publish_fn = _publish_image_inference
+        label = "image"
+    elif file_type == "video":
+        publish_fn = _publish_video_inference
+        label = "video"
+    else:
+        publish_fn = None
+        label = None
+
+    if publish_fn is not None:
         try:
-            payload = {
-                "file_id":       file_id,
-                "presigned_url": presigned_url,
-                "file_type":     file_type,
-                "job_type":      job_type,
-            }
-            message_id = _publish_image_inference(payload)
-            print(f"[ACCEPT] Published image inference request to Pub/Sub: message_id={message_id}")
+            message_id = publish_fn(_payload)
+            print(f"[ACCEPT] Published {label} inference request to Pub/Sub: message_id={message_id}")
         except Exception as exc:
-            # Log and surface a 500 so EventBridge retries — losing the job
-            # silently is worse than a few retries.
-            print(f"[ACCEPT] Failed to publish to Pub/Sub: {exc}")
+            print(f"[ACCEPT] Failed to publish {label} to Pub/Sub: {exc}")
             return {"status": "error", "message": "Failed to enqueue inference"}, 500, {
                 "Content-Type": "application/json"
             }

@@ -93,6 +93,12 @@ resource "google_pubsub_topic_iam_member" "accept_inference_publisher" {
   member = "serviceAccount:${google_service_account.accept_inference_runtime.email}"
 }
 
+resource "google_pubsub_topic_iam_member" "accept_inference_video_publisher" {
+  topic  = google_pubsub_topic.video_inference_requests.name
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:${google_service_account.accept_inference_runtime.email}"
+}
+
 # Allow unauthenticated invocation (auth is handled at application level via X-Callback-Secret HMAC)
 resource "google_cloudfunctions2_function_iam_member" "accept_invoker_all_users" {
   project        = google_cloudfunctions2_function.accept_inference.project
