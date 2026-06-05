@@ -1,105 +1,23 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { fetchNotifications, markNotificationsAsRead, type AppNotification } from "@/lib/subscription-actions"
+import { useNotifications } from "@/hooks/use-notifications"
+import { NotificationItem } from "@/components/notification-item"
 
 export function NotificationDropdown() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [notifications, setNotifications] = useState<AppNotification[]>([])
-  const [loading, setLoading] = useState(true)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  // Fetch notifications from Server Actions
-  const loadNotifications = async (silent = false) => {
-    if (!silent) setLoading(true)
-    try {
-      const data = await fetchNotifications()
-      setNotifications(data)
-    } catch (err) {
-      console.error("Failed to load notifications:", err)
-    } finally {
-      if (!silent) setLoading(false)
-    }
-  }
-
-  // Poll notifications list every 20 seconds
-  useEffect(() => {
-    loadNotifications(false)
-
-    const interval = setInterval(() => {
-      loadNotifications(true)
-    }, 20000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // Refresh immediately when dropdown is opened to guarantee active presigned URLs
-  useEffect(() => {
-    if (isOpen) {
-      loadNotifications(true)
-    }
-  }, [isOpen])
-
-  // Close dropdown if clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
-  const unreadCount = notifications.filter((n) => !n.read).length
-
-  const handleMarkAllRead = async () => {
-    try {
-      // Optimistic update
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-      await markNotificationsAsRead()
-    } catch (err) {
-      console.error("Failed to mark all as read:", err)
-      loadNotifications(true)
-    }
-  }
-
-  const handleMarkSingleRead = async (id: string) => {
-    try {
-      // Optimistic update
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      )
-      await markNotificationsAsRead(id)
-    } catch (err) {
-      console.error("Failed to mark notification as read:", err)
-      loadNotifications(true)
-    }
-  }
-
-  // Format timestamp to a relative time string
-  const formatTime = (isoString: string) => {
-    try {
-      const date = new Date(isoString)
-      const now = new Date()
-      const diffMs = now.getTime() - date.getTime()
-      if (diffMs < 0) return "Just now"
-
-      const diffMins = Math.floor(diffMs / 60000)
-      if (diffMins < 1) return "Just now"
-      if (diffMins < 60) return `${diffMins}m ago`
-
-      const diffHours = Math.floor(diffMins / 60)
-      if (diffHours < 24) return `${diffHours}h ago`
-
-      return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
-    } catch {
-      return "Recently"
-    }
-  }
+  const {
+    isOpen,
+    setIsOpen,
+    notifications,
+    loading,
+    unreadCount,
+    dropdownRef,
+    handleMarkAllRead,
+    handleMarkSingleRead,
+  } = useNotifications()
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -170,52 +88,11 @@ export function NotificationDropdown() {
             ) : notifications.length > 0 ? (
               <div className="divide-y divide-muted/40">
                 {notifications.map((notif) => (
-                  <div
+                  <NotificationItem
                     key={notif.id}
-                    onClick={() => handleMarkSingleRead(notif.id)}
-                    className={`flex items-start gap-3 p-3 transition-colors hover:bg-muted/40 cursor-pointer relative ${
-                      !notif.read ? "bg-primary/5 hover:bg-primary/10" : ""
-                    }`}
-                  >
-                    {/* Unread Status Dot */}
-                    {!notif.read && (
-                      <span className="absolute top-4 left-2.5 flex h-2 w-2 rounded-full bg-primary" />
-                    )}
-
-                    <div className={`flex-1 ${!notif.read ? "pl-2.5" : ""}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className={`text-xs font-semibold ${!notif.read ? "text-foreground" : "text-muted-foreground"}`}>
-                          {notif.title}
-                        </p>
-                        <span className="text-[10px] text-muted-foreground shrink-0">
-                          {formatTime(notif.timestamp)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-normal">
-                        {notif.message}
-                      </p>
-
-                      {/* Species Badge & File Link */}
-                      <div className="flex items-center gap-2 mt-2">
-                        {notif.tag && (
-                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary uppercase tracking-wider">
-                            {notif.tag}
-                          </span>
-                        )}
-                        {notif.file_url && (
-                          <a
-                            href={notif.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2"
-                          >
-                            View File
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    notification={notif}
+                    onMarkRead={handleMarkSingleRead}
+                  />
                 ))}
               </div>
             ) : (
@@ -245,3 +122,4 @@ export function NotificationDropdown() {
     </div>
   )
 }
+
