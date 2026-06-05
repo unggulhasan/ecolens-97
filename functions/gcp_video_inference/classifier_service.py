@@ -76,7 +76,7 @@ def classify_crop(crop_path: str) -> str:
     print("Final crop prediction common name:", best_common_name)
     print("Final crop prediction confidence:", best_confidence)
 
-    if best_confidence < 0.5:
+    if best_confidence < 0.7:
         print("Skipping crop because classifier confidence is too low:", best_confidence)
         return None
     return best_common_name
