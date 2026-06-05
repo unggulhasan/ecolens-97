@@ -15,7 +15,7 @@ type LoginFormPanelProps = {
   redirectTo?: string
 }
 
-export function LoginFormPanel({ redirectTo = "/search" }: LoginFormPanelProps) {
+export function LoginFormPanel({ redirectTo = "/home" }: LoginFormPanelProps) {
   return (
     <div className="authFormPanel">
       <CardHeader className="authFormHeader px-0 pb-4">

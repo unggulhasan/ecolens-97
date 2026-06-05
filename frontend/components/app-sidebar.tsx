@@ -14,12 +14,18 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Search01Icon, Upload01Icon } from "@hugeicons/core-free-icons"
+import { Home01Icon, Search01Icon, Upload01Icon } from "@hugeicons/core-free-icons"
 
 export function AppSidebar() {
   const pathname = usePathname()
 
   const menuItems = [
+    {
+      title: "Home",
+      url: "/home",
+      icon: Home01Icon,
+      isCustomIcon: false,
+    },
     {
       title: "Search",
       url: "/search",

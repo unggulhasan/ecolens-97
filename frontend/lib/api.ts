@@ -96,6 +96,7 @@ export type LookupByThumbnailResponse = {
   thumbnail_url?: string
   thumbnail_url_http?: string
   user_id: string
+  tags?: Record<string, number>
 }
 
 export async function lookupByThumbnail(
@@ -122,4 +123,82 @@ export async function lookupByThumbnail(
   }
 
   return response.json()
+}
+
+export type SearchBySpeciesResponseItem = {
+  file_url: string
+  file_url_http: string
+  thumbnail_url?: string
+  thumbnail_url_http?: string
+  user_id: string
+  tags?: Record<string, number>
+}
+
+export async function searchBySpecies(
+  idToken: string,
+  species: string[]
+): Promise<SearchBySpeciesResponseItem[]> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
+
+  const response = await fetch(`${baseUrl}/search-by-species`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ species }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`search-by-species returned ${response.status}`)
+  }
+
+  const data = await response.json()
+  return (data.results || []) as SearchBySpeciesResponseItem[]
+}
+
+export type PaginatedFilesResponse = {
+  page: number
+  page_size: number
+  total: number
+  results: SearchBySpeciesResponseItem[]
+}
+
+export type ListAllFilesOptions = {
+  mine?: boolean
+}
+
+export async function listAllFiles(
+  idToken: string,
+  page: number = 1,
+  options: ListAllFilesOptions = {}
+): Promise<PaginatedFilesResponse> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
+
+  const params = new URLSearchParams({ page: String(page) })
+  if (options.mine) {
+    params.set("mine", "true")
+  }
+
+  const response = await fetch(`${baseUrl}/all-files?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new Error(`all-files returned ${response.status}`)
+  }
+
+  const data = await response.json()
+  return {
+    page: data.page ?? page,
+    page_size: data.page_size ?? 10,
+    total: data.total ?? 0,
+    results: (data.results || []) as SearchBySpeciesResponseItem[],
+  }
 }

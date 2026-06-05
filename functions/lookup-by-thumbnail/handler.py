@@ -81,6 +81,7 @@ def handle(event, context):
             'file_url_http': file_url_http or file_url,
             'thumbnail_url': thumbnail_url,
             'thumbnail_url_http': thumbnail_url_http or file_url_http or file_url,
-            'user_id': item.get('user_id')
+            'user_id': item.get('user_id'),
+            'tags': item.get('tags', {})
         }, cls=DecimalEncoder)
     }

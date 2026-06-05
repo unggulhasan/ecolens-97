@@ -3,7 +3,9 @@ import boto3
 import os
 import logging
 import datetime
+from urllib.parse import urlparse
 from boto3.dynamodb.conditions import Key
+from botocore.config import Config
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -11,9 +13,31 @@ logger.setLevel(logging.INFO)
 sns = boto3.client('sns', region_name=os.environ.get('AWS_REGION_NAME', 'ap-southeast-4'))
 SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
 
+s3_client = boto3.client(
+    's3',
+    region_name=os.environ.get('AWS_REGION_NAME', 'ap-southeast-4'),
+    endpoint_url=f"https://s3.{os.environ.get('AWS_REGION_NAME', 'ap-southeast-4')}.amazonaws.com",
+    config=Config(signature_version='s3v4')
+)
+
 dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('AWS_REGION_NAME', 'ap-southeast-4'))
 SUBSCRIPTIONS_TABLE_NAME = os.environ['SUBSCRIPTIONS_TABLE_NAME']
 table = dynamodb.Table(SUBSCRIPTIONS_TABLE_NAME)
+
+def generate_presigned_url(s3_url):
+    try:
+        parsed = urlparse(s3_url)
+        bucket = parsed.netloc
+        key = parsed.path.lstrip('/')
+        
+        return s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket, 'Key': key},
+            ExpiresIn=3600 # 1 hour
+        )
+    except Exception as e:
+        logger.error("Failed to generate presigned URL for %s: %s", s3_url, str(e))
+        return None
 
 def get_user_id(event):
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
@@ -106,6 +130,7 @@ def handle(event, context):
     logger.info("Received event: %s", json.dumps(event))
     
     method = event.get('requestContext', {}).get('http', {}).get('method', 'POST')
+    path = event.get('requestContext', {}).get('http', {}).get('path', '/subscribe')
     user_id = get_user_id(event)
     
     if not user_id:
@@ -114,6 +139,123 @@ def handle(event, context):
             'body': json.dumps({'error': 'Unauthorized: Missing user identity'})
         }
     
+    # Route for notifications
+    if path == '/notifications':
+        if method == 'GET':
+            try:
+                notifications_table_name = os.environ.get('NOTIFICATIONS_TABLE_NAME')
+                if not notifications_table_name:
+                    return {
+                        'statusCode': 500,
+                        'body': json.dumps({'error': 'Notifications table not configured'})
+                    }
+                notifications_table = dynamodb.Table(notifications_table_name)
+                
+                # Query notifications by user_id
+                response = notifications_table.query(
+                    KeyConditionExpression=Key('user_id').eq(user_id)
+                )
+                items = response.get('Items', [])
+                
+                formatted_notifs = []
+                for item in items:
+                    raw_s3_url = item.get('file_url')
+                    http_url = None
+                    if raw_s3_url and raw_s3_url.startswith('s3://'):
+                        http_url = generate_presigned_url(raw_s3_url)
+                        
+                    formatted_notifs.append({
+                        'id': item.get('notification_id'),
+                        'title': item.get('title'),
+                        'message': item.get('message'),
+                        'read': bool(item.get('read', False)),
+                        'timestamp': item.get('timestamp'),
+                        'file_url': http_url or raw_s3_url,
+                        'tag': item.get('tag')
+                    })
+                
+                # Sort by timestamp descending
+                formatted_notifs.sort(key=lambda x: x['timestamp'], reverse=True)
+                
+                return {
+                    'statusCode': 200,
+                    'body': json.dumps({'notifications': formatted_notifs})
+                }
+            except Exception as e:
+                logger.error("Failed to query notifications: %s", str(e))
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps({'error': f'Failed to query notifications: {str(e)}'})
+                }
+        else:
+            return {
+                'statusCode': 405,
+                'body': json.dumps({'error': 'Method not allowed'})
+            }
+                
+    elif path == '/notifications/read':
+        if method == 'POST':
+            try:
+                body = json.loads(event.get('body', '{}'))
+            except json.JSONDecodeError:
+                body = {}
+                
+            notification_id = body.get('notification_id')
+            
+            notifications_table_name = os.environ.get('NOTIFICATIONS_TABLE_NAME')
+            if not notifications_table_name:
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps({'error': 'Notifications table not configured'})
+                }
+            notifications_table = dynamodb.Table(notifications_table_name)
+            
+            try:
+                if notification_id:
+                    # Mark a single notification as read
+                    notifications_table.update_item(
+                        Key={
+                            'user_id': user_id,
+                            'notification_id': notification_id
+                        },
+                        UpdateExpression="set #r = :r",
+                        ExpressionAttributeNames={'#r': 'read'},
+                        ExpressionAttributeValues={':r': True}
+                    )
+                else:
+                    # Mark all notifications for this user as read
+                    response = notifications_table.query(
+                        KeyConditionExpression=Key('user_id').eq(user_id)
+                    )
+                    items = response.get('Items', [])
+                    for item in items:
+                        if not item.get('read'):
+                            notifications_table.update_item(
+                                Key={
+                                    'user_id': user_id,
+                                    'notification_id': item['notification_id']
+                                },
+                                UpdateExpression="set #r = :r",
+                                ExpressionAttributeNames={'#r': 'read'},
+                                ExpressionAttributeValues={':r': True}
+                            )
+                
+                return {
+                    'statusCode': 200,
+                    'body': json.dumps({'message': 'Notifications marked as read'})
+                }
+            except Exception as e:
+                logger.error("Failed to update notifications read status: %s", str(e))
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps({'error': f'Failed to update notifications: {str(e)}'})
+                }
+        else:
+            return {
+                'statusCode': 405,
+                'body': json.dumps({'error': 'Method not allowed'})
+            }
+            
     if method == 'GET':
         try:
             subscriptions = sync_user_subscriptions(user_id)
