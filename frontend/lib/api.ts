@@ -44,7 +44,7 @@ export async function manageTags(
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
   if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
 
-  const response = await fetch(`${baseUrl}/query-5`, {
+  const response = await fetch(`${baseUrl}/update-file-tags`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${idToken}`,
@@ -53,7 +53,7 @@ export async function manageTags(
     body: JSON.stringify(payload),
   })
 
-  if (!response.ok) throw new Error(`Query 5 returned ${response.status}`)
+  if (!response.ok) throw new Error(`update-file-tags returned ${response.status}`)
   return response.json()
 }
 
@@ -75,7 +75,7 @@ export async function deleteFiles(
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
   if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
 
-  const response = await fetch(`${baseUrl}/query-6`, {
+  const response = await fetch(`${baseUrl}/delete-media`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${idToken}`,
@@ -84,6 +84,42 @@ export async function deleteFiles(
     body: JSON.stringify(payload),
   })
 
-  if (!response.ok) throw new Error(`Query 6 returned ${response.status}`)
+  if (!response.ok) throw new Error(`delete-media returned ${response.status}`)
+  return response.json()
+}
+
+// ----------------------------- QUERY 3 — Lookup by Thumbnail -------------------
+
+export type LookupByThumbnailResponse = {
+  file_url: string
+  file_url_http: string
+  thumbnail_url?: string
+  thumbnail_url_http?: string
+  user_id: string
+}
+
+export async function lookupByThumbnail(
+  idToken: string,
+  thumbnailUrl: string
+): Promise<LookupByThumbnailResponse> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
+
+  const response = await fetch(`${baseUrl}/lookup-by-thumbnail`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ thumbnail_url: thumbnailUrl }),
+  })
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Thumbnail not found in the database")
+    }
+    throw new Error(`lookup-by-thumbnail returned ${response.status}`)
+  }
+
   return response.json()
 }
