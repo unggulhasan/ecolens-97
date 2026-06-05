@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { signInWithCognito } from "@/auth-actions"
+import { signInWithCognito } from "@/lib/auth-actions"
 import { Button } from "@/components/ui/button"
 import {
   CardContent,

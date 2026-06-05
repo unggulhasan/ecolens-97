@@ -13,10 +13,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon, Tag01Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
+import { useSession } from "next-auth/react"
+import { manageTags, deleteFiles, lookupByThumbnail } from "@/lib/api"
 
 type TagCountInput = {
   id: string
@@ -26,12 +29,15 @@ type TagCountInput = {
 
 type SearchResult = {
   url: string
+  fullUrl: string
+  s3Url: string
   isOwner: boolean
 }
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
 export function SearchContainer() {
+  const { data: session } = useSession()
   const [activeTab, setActiveTab] = React.useState<string>("tags-count")
   const nextRowIdRef = React.useRef<number>(2)
 
@@ -56,6 +62,9 @@ export function SearchContainer() {
 
   // Selection state
   const [selectedUrls, setSelectedUrls] = React.useState<Set<string>>(new Set())
+
+  // View mode state
+  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid")
 
   // Edit Tags modal state
   const [showEditModal, setShowEditModal] = React.useState(false)
@@ -96,7 +105,7 @@ export function SearchContainer() {
 
   const selectAll = () => {
     if (!results) return
-    setSelectedUrls(new Set(results.map((r) => r.url)))
+    setSelectedUrls(new Set(results.map((r) => r.s3Url)))
   }
 
   const clearSelection = () => setSelectedUrls(new Set())
@@ -152,31 +161,71 @@ export function SearchContainer() {
   const searchTagsCount = async (tags: TagCountInput[]): Promise<SearchResult[]> => {
     console.log("Searching tags with minimum count:", tags)
     return new Promise((resolve) => setTimeout(() => resolve([
-      { url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop", isOwner: true },
-      { url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop", isOwner: true },
-      { url: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop", isOwner: false },
+      {
+        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
+        isOwner: true
+      },
+      {
+        url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
+        isOwner: true
+      },
+      {
+        url: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-3/file3.jpg",
+        isOwner: false
+      },
     ]), 1000))
   }
 
   const searchTagsOnly = async (tagsString: string): Promise<SearchResult[]> => {
     console.log("Searching species/tags only:", tagsString)
     return new Promise((resolve) => setTimeout(() => resolve([
-      { url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop", isOwner: true },
+      {
+        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
+        isOwner: true
+      },
     ]), 1000))
   }
 
   const searchThumbnail = async (url: string): Promise<SearchResult[]> => {
-    console.log("Searching by thumbnail URL:", url)
-    return new Promise((resolve) => setTimeout(() => resolve([
-      { url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop", isOwner: true },
-    ]), 1000))
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      throw new Error("Not authenticated. Please log in again.")
+    }
+    const data = await lookupByThumbnail(idToken, url)
+    const userEmail = session?.user?.email || ""
+    return [
+      {
+        url: data.thumbnail_url_http || data.file_url_http,
+        fullUrl: data.file_url_http,
+        s3Url: data.file_url,
+        isOwner: data.user_id === userEmail,
+      }
+    ]
   }
 
   const searchFile = async (file: File | null): Promise<SearchResult[]> => {
     console.log("Searching by uploaded file:", file)
     return new Promise((resolve) => setTimeout(() => resolve([
-      { url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop", isOwner: true },
-      { url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop", isOwner: false },
+      {
+        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
+        isOwner: true
+      },
+      {
+        url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
+        isOwner: false
+      },
     ]), 1000))
   }
 
@@ -215,14 +264,43 @@ export function SearchContainer() {
     }
   }
 
-  // ---- Edit Tags handler (placeholder) ----
+  // ---- Edit Tags handler ----
   const handleEditTags = async () => {
     setEditLoading(true)
     setEditResult(null)
-    // TODO: wire up manageTags() from lib/api.ts
-    await new Promise((r) => setTimeout(r, 800))
-    setEditResult(`Successfully ${editOperation === 1 ? "added" : "removed"} tags on ${selectedCount} file(s).`)
-    setEditLoading(false)
+
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      setEditResult("Error: Not authenticated. Please log in again.")
+      setEditLoading(false)
+      return
+    }
+
+    const file_urls = Array.from(selectedUrls)
+    const tags = editTagsInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+
+    if (tags.length === 0) {
+      setEditResult("Error: Please enter at least one tag.")
+      setEditLoading(false)
+      return
+    }
+
+    try {
+      const data = await manageTags(idToken, { file_urls, tags, operation: editOperation })
+      if (data.failed.length > 0) {
+        const failedMsg = data.failed.map(f => `${f.url}: ${f.reason}`).join("; ")
+        setEditResult(`Completed with errors. Updated: ${data.updated.length}, Failed: ${failedMsg}`)
+      } else {
+        setEditResult(`Successfully ${editOperation === 1 ? "added" : "removed"} tags on ${data.updated.length} file(s).`)
+      }
+    } catch (err: any) {
+      setEditResult(`Error: ${err.message || "An unexpected error occurred."}`)
+    } finally {
+      setEditLoading(false)
+    }
   }
 
   const closeEditModal = () => {
@@ -232,16 +310,45 @@ export function SearchContainer() {
     setEditResult(null)
   }
 
-  // ---- Delete handler (placeholder) ----
+  // ---- Delete handler ----
   const handleDelete = async () => {
     setDeleteLoading(true)
     setDeleteResult(null)
-    // TODO: wire up deleteFiles() from lib/api.ts
-    await new Promise((r) => setTimeout(r, 800))
-    setResults((prev) => prev ? prev.filter((r) => !selectedUrls.has(r.url)) : prev)
-    setDeleteResult(`Successfully deleted ${selectedCount} file(s).`)
-    setSelectedUrls(new Set())
-    setDeleteLoading(false)
+
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      setDeleteResult("Error: Not authenticated. Please log in again.")
+      setDeleteLoading(false)
+      return
+    }
+
+    const urls = Array.from(selectedUrls)
+
+    try {
+      const data = await deleteFiles(idToken, { urls })
+      
+      // Filter out successfully deleted files from the local results list
+      const deletedSet = new Set(data.deleted)
+      setResults((prev) => prev ? prev.filter((r) => !deletedSet.has(r.s3Url)) : prev)
+      
+      // Update selectedUrls to clear successfully deleted items
+      setSelectedUrls((prev) => {
+        const next = new Set(prev)
+        data.deleted.forEach(url => next.delete(url))
+        return next
+      })
+
+      if (data.failed.length > 0) {
+        const failedMsg = data.failed.map(f => `${f.url}: ${f.reason}`).join("; ")
+        setDeleteResult(`Completed with errors. Deleted: ${data.deleted.length}, Failed: ${failedMsg}`)
+      } else {
+        setDeleteResult(`Successfully deleted ${data.deleted.length} file(s).`)
+      }
+    } catch (err: any) {
+      setDeleteResult(`Error: ${err.message || "An unexpected error occurred."}`)
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const closeDeleteModal = () => {
@@ -269,6 +376,31 @@ export function SearchContainer() {
           </button>
         </div>
         <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Operation</label>
+          <div className="flex gap-3">
+            <Button
+              variant={editOperation === 1 ? "default" : "outline"}
+              className="flex-1"
+              onClick={() => {
+                setEditOperation(1)
+                if (editResult) { setEditResult(null); setEditTagsInput("") }
+              }}
+            >
+              Add Tags
+            </Button>
+            <Button
+              variant={editOperation === 0 ? "destructive" : "outline"}
+              className="flex-1"
+              onClick={() => {
+                setEditOperation(0)
+                if (editResult) { setEditResult(null); setEditTagsInput("") }
+              }}
+            >
+              Remove Tags
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">Tags</label>
           <Input
             placeholder="e.g. koala, dingo, wombat"
@@ -277,52 +409,44 @@ export function SearchContainer() {
           />
           <p className="text-xs text-muted-foreground">Comma-separated list of tags.</p>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Operation</label>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setEditOperation(1)}
-              className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                editOperation === 1
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-foreground border-border hover:bg-accent"
-              }`}
+        {editResult ? (
+          <>
+            <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+              {editResult}
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditResult(null)
+                  setEditTagsInput("")
+                }}
+              >
+                Continue
+              </Button>
+              <Button onClick={closeEditModal} className="upload-action-button">
+                Done
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={closeEditModal}>Cancel</Button>
+            <Button
+              onClick={handleEditTags}
+              disabled={!editTagsInput.trim() || editLoading}
+              className="upload-action-button"
             >
-              Add Tags
-            </button>
-            <button
-              onClick={() => setEditOperation(0)}
-              className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                editOperation === 0
-                  ? "bg-red-800 text-white border-red-800"
-                  : "bg-background text-foreground border-border hover:bg-accent"
-              }`}
-            >
-              Remove Tags
-            </button>
-          </div>
-        </div>
-        {editResult && (
-          <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-            {editResult}
+              {editLoading && (
+                <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
+                  <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              )}
+              {editLoading ? "Applying..." : editOperation === 1 ? "Add Tags" : "Remove Tags"}
+            </Button>
           </div>
         )}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={closeEditModal}>Cancel</Button>
-          <Button
-            onClick={handleEditTags}
-            disabled={!editTagsInput.trim() || editLoading}
-            className="upload-action-button"
-          >
-            {editLoading && (
-              <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
-                <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            )}
-            {editLoading ? "Applying..." : editOperation === 1 ? "Add Tags" : "Remove Tags"}
-          </Button>
-        </div>
       </div>
     </div>
   )
@@ -397,9 +521,15 @@ export function SearchContainer() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="tags-count" onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            defaultValue="tags-count"
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <TabsList className="search-tabs-list">
-              <TabsTrigger value="tags-count">Tags with Minimum Count</TabsTrigger>
+              <TabsTrigger value="tags-count">
+                Tags with Minimum Count
+              </TabsTrigger>
               <TabsTrigger value="tags-only">Tags Only</TabsTrigger>
               <TabsTrigger value="thumbnail">Thumbnail&#39;s URL</TabsTrigger>
               <TabsTrigger value="file">File</TabsTrigger>
@@ -408,11 +538,26 @@ export function SearchContainer() {
             {/* Tab 1 */}
             <TabsContent value="tags-count" className="space-y-4">
               <div className="search-input-group">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Query Tags</span>
-                  <Button onClick={addTagRow} variant="outline" size="sm" className="h-8">
-                    <svg className="size-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  <Button
+                    onClick={addTagRow}
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                  >
+                    <svg
+                      className="mr-1 size-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 4v16m8-8H4"
+                      />
                     </svg>
                     Add Tag
                   </Button>
@@ -423,7 +568,9 @@ export function SearchContainer() {
                       <Input
                         placeholder="Tag name (e.g. kangaroo)"
                         value={row.tag}
-                        onChange={(e) => updateTagRow(row.id, "tag", e.target.value)}
+                        onChange={(e) =>
+                          updateTagRow(row.id, "tag", e.target.value)
+                        }
                         className="flex-1"
                       />
                       <Input
@@ -432,10 +579,18 @@ export function SearchContainer() {
                         value={row.count}
                         onChange={(e) => {
                           const val = e.target.value
-                          updateTagRow(row.id, "count", val === "" ? "" : parseInt(val) || "")
+                          updateTagRow(
+                            row.id,
+                            "count",
+                            val === "" ? "" : parseInt(val) || ""
+                          )
                         }}
                         onBlur={() => {
-                          if (row.count === "" || isNaN(Number(row.count)) || Number(row.count) < 1) {
+                          if (
+                            row.count === "" ||
+                            isNaN(Number(row.count)) ||
+                            Number(row.count) < 1
+                          ) {
                             updateTagRow(row.id, "count", 1)
                           }
                         }}
@@ -446,10 +601,20 @@ export function SearchContainer() {
                         size="icon"
                         onClick={() => removeTagRow(row.id)}
                         disabled={tagsCount.length === 1}
-                        className="text-destructive hover:bg-destructive/10 shrink-0"
+                        className="shrink-0 text-destructive hover:bg-destructive/10"
                       >
-                        <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <svg
+                          className="size-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </Button>
                     </div>
@@ -478,7 +643,7 @@ export function SearchContainer() {
               <div className="search-input-group">
                 <span className="text-sm font-medium">Thumbnail URL</span>
                 <Input
-                  placeholder="s3://aussie-ecolens-s3-media/images/thumbnail.png"
+                  placeholder="s3://aussie-ecolens-s3-media/thumbnails/thumbnail.png"
                   value={thumbnailUrl}
                   onChange={(e) => setThumbnailUrl(e.target.value)}
                 />
@@ -498,7 +663,12 @@ export function SearchContainer() {
                   onDragOver={selectedFile ? undefined : handleDrag}
                   onDragLeave={selectedFile ? undefined : handleDrag}
                   onDrop={selectedFile ? undefined : handleDrop}
-                  onClick={selectedFile ? undefined : () => document.getElementById("search-file-input")?.click()}
+                  onClick={
+                    selectedFile
+                      ? undefined
+                      : () =>
+                          document.getElementById("search-file-input")?.click()
+                  }
                 >
                   <input
                     type="file"
@@ -509,29 +679,48 @@ export function SearchContainer() {
                     onChange={handleFileChange}
                   />
                   <div className="upload-icon-wrapper">
-                    <HugeiconsIcon icon={Upload01Icon} className="size-8" strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={Upload01Icon}
+                      className="size-8"
+                      strokeWidth={2}
+                    />
                   </div>
-                  <p className="font-medium text-sm">Drag & drop your file here, or click to select</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Supports image and video files</p>
+                  <p className="text-sm font-medium">
+                    Drag & drop your file here, or click to select
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Supports image and video files
+                  </p>
                 </div>
                 {selectedFile && (
-                  <div className="space-y-3 mt-4">
+                  <div className="mt-4 space-y-3">
                     <h3 className="text-sm font-semibold">Selected File</h3>
                     <div className="selected-file-card">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex-shrink-0 text-muted-foreground">
                           <HugeiconsIcon
-                            icon={selectedFile.type.startsWith("video/") ? Video01Icon : Image01Icon}
+                            icon={
+                              selectedFile.type.startsWith("video/")
+                                ? Video01Icon
+                                : Image01Icon
+                            }
                             className="size-5"
                           />
                         </div>
-                        <span className="truncate font-medium">{selectedFile.name}</span>
-                        <span className="text-xs text-muted-foreground">({formatFileSize(selectedFile.size)})</span>
+                        <span className="truncate font-medium">
+                          {selectedFile.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          ({formatFileSize(selectedFile.size)})
+                        </span>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => { e.stopPropagation(); removeSelectedFile() }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeSelectedFile()
+                        }}
                         className="text-destructive hover:bg-destructive/10"
                       >
                         <HugeiconsIcon icon={Delete02Icon} className="size-4" />
@@ -543,14 +732,33 @@ export function SearchContainer() {
             </TabsContent>
 
             {/* Search button */}
-            <div className="flex flex-col gap-4 pt-6 border-t mt-6">
+            <div className="mt-6 flex flex-col gap-4 border-t pt-6">
               {error && <div className="upload-error">{error}</div>}
               <div className="flex justify-end">
-                <Button onClick={handleSearch} disabled={searching || isSearchDisabled} className="upload-action-button">
+                <Button
+                  onClick={handleSearch}
+                  disabled={searching || isSearchDisabled}
+                  className="upload-action-button"
+                >
                   {searching && (
-                    <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
-                      <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    <svg
+                      className="upload-spinner"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="upload-spinner-circle"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="upload-spinner-path"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
                     </svg>
                   )}
                   {searching ? "Searching..." : "Execute Search"}
@@ -570,103 +778,262 @@ export function SearchContainer() {
 
           {/* Results */}
           {results && results.length > 0 && (
-            <div className="space-y-3 pt-6 border-t mt-6">
-              <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="mt-6 space-y-3 border-t pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <h3 className="text-sm font-semibold">Search Results</h3>
                   {anySelected && (
-                    <span className="text-xs text-muted-foreground">{selectedCount} selected</span>
+                    <span className="text-xs text-muted-foreground">
+                      {selectedCount} selected
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   {anySelected ? (
-                    <button onClick={clearSelection} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <button
+                      onClick={clearSelection}
+                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
                       Clear selection
                     </button>
                   ) : (
-                    <button onClick={selectAll} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <button
+                      onClick={selectAll}
+                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
                       Select all
                     </button>
                   )}
+                  {/* View mode toggle */}
+                  <div className="flex items-center rounded-md border border-border overflow-hidden">
+                    <button
+                      onClick={() => setViewMode("grid")}
+                      title="Icons view"
+                      className={`flex h-9 w-9 items-center justify-center transition-colors ${
+                        viewMode === "grid"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      title="List view"
+                      className={`flex h-9 w-9 items-center justify-center transition-colors ${
+                        viewMode === "list"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    </button>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={!anySelected}
-                    onClick={() => { setShowEditModal(true); setEditResult(null) }}
-                    className="flex items-center gap-1.5 h-8"
+                    onClick={() => {
+                      setShowEditModal(true)
+                      setEditResult(null)
+                    }}
+                    className="flex h-8 items-center gap-1.5"
                   >
-                    <HugeiconsIcon icon={Tag01Icon} className="size-3.5" strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={Tag01Icon}
+                      className="size-3.5"
+                      strokeWidth={2}
+                    />
                     Edit Tags
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={!anySelected}
-                    onClick={() => { setShowDeleteModal(true); setDeleteResult(null) }}
-                    className="flex items-center gap-1.5 h-8 text-destructive border-destructive/30 hover:bg-destructive/10 disabled:text-muted-foreground disabled:border-border"
+                    onClick={() => {
+                      setShowDeleteModal(true)
+                      setDeleteResult(null)
+                    }}
+                    className="flex h-8 items-center gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 disabled:border-border disabled:text-muted-foreground"
                   >
-                    <HugeiconsIcon icon={Delete02Icon} className="size-3.5" strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={Delete02Icon}
+                      className="size-3.5"
+                      strokeWidth={2}
+                    />
                     Delete Files
                   </Button>
                 </div>
               </div>
 
-              <div className="search-results-grid">
-                {results.map((result, index) => {
-                  const isVideo = result.url.toLowerCase().endsWith(".mp4") ||
-                    result.url.toLowerCase().endsWith(".mov") ||
-                    result.url.toLowerCase().endsWith(".avi")
-                  const isSelected = selectedUrls.has(result.url)
+              {viewMode === "grid" ? (
+                <div className="search-results-grid">
+                  {results.map((result, index) => {
+                    const isVideo =
+                      result.s3Url.toLowerCase().endsWith(".mp4") ||
+                      result.s3Url.toLowerCase().endsWith(".mov") ||
+                      result.s3Url.toLowerCase().endsWith(".avi")
+                    const isSelected = selectedUrls.has(result.s3Url)
 
-                  return (
-                    <div
-                      key={index}
-                      className={`search-result-card cursor-pointer select-none ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                      onClick={() => toggleSelect(result.url)}
-                    >
-                      <div className={`absolute top-2 left-2 z-10 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                        isSelected ? "border-primary" : "bg-white/80 border-white/80" }`}>
-                        {isSelected && (
-                      <div className="absolute inset-0 rounded bg-primary/15" />
-                        )}
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-primary relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          )}
-                      </div>
-                      {!result.isOwner && (
-                        <div className="absolute top-2 right-2 z-10 text-xs bg-black/50 text-white px-1.5 py-0.5 rounded">
-                          Not yours
-                        </div>
-                      )}
-                      {isVideo ? (
-                        <video src={result.url} controls className="search-result-video" />
-                      ) : (
-                        <img src={result.url} alt={`Result ${index + 1}`} className="search-result-image" />
-                      )}
-                      <div className="search-result-overlay">
-                        <a
-                          href={result.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="search-result-link"
-                          onClick={(e) => e.stopPropagation()}
+                    return (
+                      <div
+                        key={index}
+                        className={`search-result-card group cursor-pointer select-none ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                        onClick={() => toggleSelect(result.s3Url)}
+                      >
+                        <div
+                          className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded border-2 transition-all bg-white ${
+                            isSelected
+                              ? "border-primary opacity-100"
+                              : "border-primary opacity-0 group-hover:opacity-100"
+                          }`}
                         >
-                          View Full File
-                        </a>
+                          <div className={`absolute inset-0 rounded bg-primary/15 transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                          {isSelected && (
+                            <svg
+                              className="relative z-10 h-3 w-3 text-primary"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        {!result.isOwner && (
+                          <div className="absolute top-2 right-2 z-10 rounded bg-black/50 px-1.5 py-0.5 text-xs text-white">
+                            Not yours
+                          </div>
+                        )}
+                        {isVideo ? (
+                          <video
+                            src={result.url}
+                            controls
+                            className="search-result-video"
+                          />
+                        ) : (
+                          <img
+                            src={result.url}
+                            alt={`Result ${index + 1}`}
+                            className="search-result-image"
+                          />
+                        )}
+                        <div className="search-result-overlay">
+                          <a
+                            href={result.fullUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="search-result-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            View Full File
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10" />
+                      <TableHead className="w-16">Thumbnail</TableHead>
+                      <TableHead>URL</TableHead>
+                      <TableHead>Tags</TableHead>
+                      <TableHead>Owner</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result, index) => {
+                      const isVideo =
+                        result.s3Url.toLowerCase().endsWith(".mp4") ||
+                        result.s3Url.toLowerCase().endsWith(".mov") ||
+                        result.s3Url.toLowerCase().endsWith(".avi")
+                      const isSelected = selectedUrls.has(result.s3Url)
+
+                      return (
+                        <TableRow
+                          key={index}
+                          className={`cursor-pointer select-none transition-colors ${
+                            isSelected
+                              ? "bg-primary/5 hover:bg-primary/10"
+                              : index % 2 === 0
+                                ? "bg-background hover:bg-muted/50"
+                                : "bg-muted/20 hover:bg-muted/50"
+                          }`}
+                          onClick={() => toggleSelect(result.s3Url)}
+                        >
+                          <TableCell>
+                            <div
+                              className={`relative flex h-5 w-5 items-center justify-center rounded border-2 transition-colors bg-white ${
+                                isSelected ? "border-primary" : "border-border"
+                              }`}
+                            >
+                              {isSelected && <div className="absolute inset-0 rounded bg-primary/15" />}
+                              {isSelected && (
+                                <svg className="relative z-10 h-3 w-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-12 w-12 overflow-hidden rounded-lg bg-muted">
+                              {isVideo ? (
+                                <video src={result.url} className="h-full w-full object-cover" />
+                              ) : (
+                                <img src={result.url} alt={`Result ${index + 1}`} className="h-full w-full object-cover" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <a
+                              href={result.fullUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="truncate block text-xs text-primary underline-offset-2 hover:underline max-w-xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {result.s3Url}
+                            </a>
+                          </TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">—</span>
+                          </TableCell>
+                          <TableCell>
+                            {result.isOwner
+                              ? <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{(session?.user?.name ?? session?.user?.email) || "You"}</span>
+                              : <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Other user</span>
+                            }
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           )}
 
           {results && results.length === 0 && (
-            <div className="pt-6 border-t mt-6">
+            <div className="mt-6 border-t pt-6">
               <div className="search-no-results">
-                <p className="text-muted-foreground">No matching files found.</p>
+                <p className="text-muted-foreground">
+                  No matching files found.
+                </p>
               </div>
             </div>
           )}

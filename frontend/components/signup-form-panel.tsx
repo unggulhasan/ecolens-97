@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { signUpWithCognitoAdmin } from "@/auth-actions"
+import { signUpWithCognitoAdmin } from "@/lib/auth-actions"
 import { Button } from "@/components/ui/button"
 import {
   CardContent,
