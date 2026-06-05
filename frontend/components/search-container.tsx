@@ -809,7 +809,7 @@ export function SearchContainer() {
                     <button
                       onClick={() => setViewMode("grid")}
                       title="Icons view"
-                      className={`flex h-8 w-8 items-center justify-center transition-colors ${
+                      className={`flex h-9 w-9 items-center justify-center transition-colors ${
                         viewMode === "grid"
                           ? "bg-primary text-primary-foreground"
                           : "bg-background text-muted-foreground hover:bg-accent"
@@ -825,7 +825,7 @@ export function SearchContainer() {
                     <button
                       onClick={() => setViewMode("list")}
                       title="List view"
-                      className={`flex h-8 w-8 items-center justify-center transition-colors ${
+                      className={`flex h-9 w-9 items-center justify-center transition-colors ${
                         viewMode === "list"
                           ? "bg-primary text-primary-foreground"
                           : "bg-background text-muted-foreground hover:bg-accent"
@@ -892,10 +892,10 @@ export function SearchContainer() {
                           className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded border-2 transition-all bg-white ${
                             isSelected
                               ? "border-primary opacity-100"
-                              : "border-border opacity-0 group-hover:opacity-100"
+                              : "border-primary opacity-0 group-hover:opacity-100"
                           }`}
                         >
-                          {isSelected && <div className="absolute inset-0 rounded bg-primary/15" />}
+                          <div className={`absolute inset-0 rounded bg-primary/15 transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
                           {isSelected && (
                             <svg
                               className="relative z-10 h-3 w-3 text-primary"
@@ -967,7 +967,13 @@ export function SearchContainer() {
                       return (
                         <TableRow
                           key={index}
-                          className={`cursor-pointer select-none ${isSelected ? "bg-primary/5 hover:bg-primary/10" : ""}`}
+                          className={`cursor-pointer select-none transition-colors ${
+                            isSelected
+                              ? "bg-primary/5 hover:bg-primary/10"
+                              : index % 2 === 0
+                                ? "bg-background hover:bg-muted/50"
+                                : "bg-muted/20 hover:bg-muted/50"
+                          }`}
                           onClick={() => toggleSelect(result.s3Url)}
                         >
                           <TableCell>
@@ -987,15 +993,15 @@ export function SearchContainer() {
                           <TableCell>
                             <div className="h-12 w-12 overflow-hidden rounded-lg bg-muted">
                               {isVideo ? (
-                                <video src={result.s3Url} className="h-full w-full object-cover" />
+                                <video src={result.url} className="h-full w-full object-cover" />
                               ) : (
-                                <img src={result.s3Url} alt={`Result ${index + 1}`} className="h-full w-full object-cover" />
+                                <img src={result.url} alt={`Result ${index + 1}`} className="h-full w-full object-cover" />
                               )}
                             </div>
                           </TableCell>
                           <TableCell className="max-w-xs">
                             <a
-                              href={result.s3Url}
+                              href={result.fullUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="truncate block text-xs text-primary underline-offset-2 hover:underline max-w-xs"
@@ -1004,11 +1010,13 @@ export function SearchContainer() {
                               {result.s3Url}
                             </a>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">—</TableCell>
-                          <TableCell className="text-xs">
+                          <TableCell>
+                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">—</span>
+                          </TableCell>
+                          <TableCell>
                             {result.isOwner
-                              ? <span className="text-foreground">{(session?.user?.name ?? session?.user?.email) || "You"}</span>
-                              : <span className="text-muted-foreground">Other user</span>
+                              ? <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{(session?.user?.name ?? session?.user?.email) || "You"}</span>
+                              : <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Other user</span>
                             }
                           </TableCell>
                         </TableRow>
