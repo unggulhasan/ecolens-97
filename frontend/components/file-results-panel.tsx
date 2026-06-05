@@ -21,6 +21,8 @@ import { SearchResultsPagination } from "@/components/search-results-pagination"
 import {
   type FileResult,
   type PaginationMeta,
+  canDeleteSelection,
+  countOthersInSelection,
   isVideoFile,
 } from "@/lib/file-results"
 
@@ -70,6 +72,8 @@ export function FileResultsPanel({
 
   const anySelected = selectedUrls.size > 0
   const selectedCount = selectedUrls.size
+  const othersInSelection = countOthersInSelection(results, selectedUrls)
+  const canDelete = canDeleteSelection(results, selectedUrls)
 
   React.useEffect(() => {
     setSelectedUrls(new Set())
@@ -154,7 +158,9 @@ export function FileResultsPanel({
       return
     }
 
-    const urls = Array.from(selectedUrls)
+    const urls = Array.from(selectedUrls).filter(
+      (url) => results?.find((r) => r.s3Url === url)?.isOwner
+    )
 
     try {
       const data = await deleteFiles(idToken, { urls })
@@ -481,6 +487,8 @@ export function FileResultsPanel({
               {anySelected && (
                 <span className="text-xs text-muted-foreground">
                   {selectedCount} selected
+                  {othersInSelection > 0 &&
+                    ` (${othersInSelection} not yours - delete disabled)`}
                 </span>
               )}
             </div>
@@ -544,7 +552,12 @@ export function FileResultsPanel({
               <Button
                 size="sm"
                 variant="outline"
-                disabled={!anySelected}
+                disabled={!anySelected || !canDelete}
+                title={
+                  othersInSelection > 0
+                    ? "Deselect other users' files to delete"
+                    : undefined
+                }
                 onClick={() => {
                   setShowDeleteModal(true)
                   setDeleteResult(null)

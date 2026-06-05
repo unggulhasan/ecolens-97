@@ -37,3 +37,25 @@ export function isVideoFile(s3Url: string) {
     lower.endsWith(".avi")
   )
 }
+
+export function countOthersInSelection(
+  results: FileResult[] | null,
+  urls: Iterable<string>
+): number {
+  if (!results) return 0
+  return Array.from(urls).filter(
+    (url) => !results.find((r) => r.s3Url === url)?.isOwner
+  ).length
+}
+
+export function canDeleteSelection(
+  results: FileResult[] | null,
+  urls: Iterable<string>
+): boolean {
+  if (!results) return false
+  const selected = Array.from(urls)
+  if (selected.length === 0) return false
+  return selected.every((url) =>
+    results.some((r) => r.s3Url === url && r.isOwner)
+  )
+}
