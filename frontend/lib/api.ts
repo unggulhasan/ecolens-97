@@ -33,7 +33,7 @@ export type ManageTagsRequest = {
 }
 
 export type ManageTagsResult = {
-  updated: { file_url: string; final_tags: string[] }[]
+  updated: { file_url: string; final_tags: Record<string, number> }[]
   failed: { url: string; reason: string }[]
 }
 
@@ -53,8 +53,19 @@ export async function manageTags(
     body: JSON.stringify(payload),
   })
 
-  if (!response.ok) throw new Error(`update-file-tags returned ${response.status}`)
-  return response.json()
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const message =
+      typeof data?.error === "string"
+        ? data.error
+        : `update-file-tags returned ${response.status}`
+    throw new Error(message)
+  }
+
+  return {
+    updated: data.updated ?? [],
+    failed: data.failed ?? [],
+  }
 }
 
 // ----------------------------- QUERY 6 — Delete Files ----------------------------

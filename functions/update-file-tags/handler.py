@@ -174,7 +174,7 @@ def handle(event, context):
 
             updated.append({
                 'file_url': url,
-                'final_tags': list(existing_tags.keys())
+                'final_tags': {k: int(v) for k, v in existing_tags.items()},
             })
 
         except ValueError as e:
