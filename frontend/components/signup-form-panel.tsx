@@ -1,11 +1,9 @@
 "use client"
 
-import React, { useState } from "react"
+import * as React from "react"
 import Link from "next/link"
-import { useForm, Controller } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { signUpWithCognitoAdmin } from "@/lib/auth-actions"
+import { Controller } from "react-hook-form"
+import { useSignup } from "@/hooks/use-signup"
 import { Button } from "@/components/ui/button"
 import {
   CardContent,
@@ -16,84 +14,16 @@ import {
 import { Field, FieldLabel, FieldGroup, FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-
-const signupSchema = z.object({
-  email: z.string().min(1, "Email address is required.").email("Please enter a valid email address."),
-  givenName: z.string().min(1, "First name is required."),
-  familyName: z.string().min(1, "Last name is required."),
-})
-
-type SignupFormValues = z.infer<typeof signupSchema>
+import { SignupSuccessPanel } from "@/components/signup-success-panel"
 
 export function SignupFormPanel() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-
-  const form = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      email: "",
-      givenName: "",
-      familyName: "",
-    },
-  })
-
-  const onSubmit = async (data: SignupFormValues) => {
-    setError(null)
-    setLoading(true)
-
-    try {
-      const result = await signUpWithCognitoAdmin({
-        email: data.email,
-        givenName: data.givenName,
-        familyName: data.familyName,
-      })
-
-      if (result.success) {
-        setSuccess(true)
-      } else {
-        setError(result.message || "Failed to create account. Please try again.")
-      }
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { form, loading, error, success, onSubmit } = useSignup()
 
   if (success) {
     const emailValue = form.getValues("email")
     return (
       <div className="authFormPanel">
-        <div className="authSuccessContainer">
-          <div className="authSuccessIconWrapper">
-            <svg
-              className="size-8"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          <CardHeader className="authSuccessHeader px-0 pb-2 flex flex-col items-center text-center w-full">
-            <CardTitle className="authSuccessTitle text-xl font-semibold text-center w-full">Check your email</CardTitle>
-            <CardDescription className="authSuccessDescription text-sm text-center">
-              We have sent a temporary password to <strong className="text-foreground">{emailValue}</strong>. Please check your inbox to sign in.
-            </CardDescription>
-          </CardHeader>
-          <Button asChild className="w-full mt-4">
-            <Link href="/login">
-              Continue to Sign In
-            </Link>
-          </Button>
-        </div>
+        <SignupSuccessPanel email={emailValue} />
       </div>
     )
   }
@@ -108,9 +38,22 @@ export function SignupFormPanel() {
       </CardHeader>
 
       <CardContent className="authFormContent px-0 pt-6">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="authFormSpacing">
+        <form onSubmit={onSubmit} className="authFormSpacing">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="flex items-start gap-2.5">
+              <svg
+                className="size-4 shrink-0 text-current translate-y-0.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -199,3 +142,4 @@ export function SignupFormPanel() {
     </div>
   )
 }
+
