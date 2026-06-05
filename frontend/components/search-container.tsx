@@ -85,6 +85,8 @@ export function SearchContainer() {
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => { setMounted(true) }, [])
 
+  const hasFetchedRef = React.useRef(false)
+
   const anySelected = selectedUrls.size > 0
   const selectedCount = selectedUrls.size
 
@@ -95,10 +97,12 @@ export function SearchContainer() {
 
   // Load latest files on mount as default state
   React.useEffect(() => {
-    const loadLatestFiles = async () => {
-      const idToken = (session as any)?.idToken as string
-      if (!idToken) return
+    const idToken = (session as any)?.idToken as string
+    if (!idToken || hasFetchedRef.current) return
 
+    hasFetchedRef.current = true
+
+    const loadLatestFiles = async () => {
       setSearching(true)
       setError(null)
       try {
