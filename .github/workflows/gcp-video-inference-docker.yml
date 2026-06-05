@@ -40,8 +40,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # - name: Deploy Cloud Run Job
-      #   run: |
-      #     gcloud run jobs deploy aussie-ecolens-prod-video-inference-job \
-      #       --region=australia-southeast1 \
-      #       --image=australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-video-inference:${{ github.sha }}
+      - name: Deploy Cloud Run Job
+        run: |
+          gcloud run jobs deploy aussie-ecolens-prod-video-inference-job \
+            --region=australia-southeast1 \
+            --image=australia-southeast1-docker.pkg.dev/ecolens-497810/ecolens-repo/ecolens-video-inference:${{ github.sha }}
