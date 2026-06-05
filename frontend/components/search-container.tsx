@@ -18,7 +18,7 @@ import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon, Tag01Icon } from 
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
 import { useSession } from "next-auth/react"
-import { manageTags, deleteFiles } from "@/lib/api"
+import { manageTags, deleteFiles, lookupByThumbnail } from "@/lib/api"
 
 type TagCountInput = {
   id: string
@@ -28,6 +28,8 @@ type TagCountInput = {
 
 type SearchResult = {
   url: string
+  fullUrl: string
+  s3Url: string
   isOwner: boolean
 }
 
@@ -99,7 +101,7 @@ export function SearchContainer() {
 
   const selectAll = () => {
     if (!results) return
-    setSelectedUrls(new Set(results.map((r) => r.url)))
+    setSelectedUrls(new Set(results.map((r) => r.s3Url)))
   }
 
   const clearSelection = () => setSelectedUrls(new Set())
@@ -155,31 +157,71 @@ export function SearchContainer() {
   const searchTagsCount = async (tags: TagCountInput[]): Promise<SearchResult[]> => {
     console.log("Searching tags with minimum count:", tags)
     return new Promise((resolve) => setTimeout(() => resolve([
-      { url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop", isOwner: true },
-      { url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop", isOwner: true },
-      { url: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop", isOwner: false },
+      {
+        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
+        isOwner: true
+      },
+      {
+        url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
+        isOwner: true
+      },
+      {
+        url: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-3/file3.jpg",
+        isOwner: false
+      },
     ]), 1000))
   }
 
   const searchTagsOnly = async (tagsString: string): Promise<SearchResult[]> => {
     console.log("Searching species/tags only:", tagsString)
     return new Promise((resolve) => setTimeout(() => resolve([
-      { url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop", isOwner: true },
+      {
+        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
+        isOwner: true
+      },
     ]), 1000))
   }
 
   const searchThumbnail = async (url: string): Promise<SearchResult[]> => {
-    console.log("Searching by thumbnail URL:", url)
-    return new Promise((resolve) => setTimeout(() => resolve([
-      { url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop", isOwner: true },
-    ]), 1000))
+    const idToken = (session as any)?.idToken as string
+    if (!idToken) {
+      throw new Error("Not authenticated. Please log in again.")
+    }
+    const data = await lookupByThumbnail(idToken, url)
+    const userEmail = session?.user?.email || ""
+    return [
+      {
+        url: data.thumbnail_url_http || data.file_url_http,
+        fullUrl: data.file_url_http,
+        s3Url: data.file_url,
+        isOwner: data.user_id === userEmail,
+      }
+    ]
   }
 
   const searchFile = async (file: File | null): Promise<SearchResult[]> => {
     console.log("Searching by uploaded file:", file)
     return new Promise((resolve) => setTimeout(() => resolve([
-      { url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop", isOwner: true },
-      { url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop", isOwner: false },
+      {
+        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
+        isOwner: true
+      },
+      {
+        url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
+        isOwner: false
+      },
     ]), 1000))
   }
 
@@ -283,7 +325,7 @@ export function SearchContainer() {
       
       // Filter out successfully deleted files from the local results list
       const deletedSet = new Set(data.deleted)
-      setResults((prev) => prev ? prev.filter((r) => !deletedSet.has(r.url)) : prev)
+      setResults((prev) => prev ? prev.filter((r) => !deletedSet.has(r.s3Url)) : prev)
       
       // Update selectedUrls to clear successfully deleted items
       setSelectedUrls((prev) => {
@@ -781,16 +823,16 @@ export function SearchContainer() {
               <div className="search-results-grid">
                 {results.map((result, index) => {
                   const isVideo =
-                    result.url.toLowerCase().endsWith(".mp4") ||
-                    result.url.toLowerCase().endsWith(".mov") ||
-                    result.url.toLowerCase().endsWith(".avi")
-                  const isSelected = selectedUrls.has(result.url)
+                    result.s3Url.toLowerCase().endsWith(".mp4") ||
+                    result.s3Url.toLowerCase().endsWith(".mov") ||
+                    result.s3Url.toLowerCase().endsWith(".avi")
+                  const isSelected = selectedUrls.has(result.s3Url)
 
                   return (
                     <div
                       key={index}
                       className={`search-result-card cursor-pointer select-none ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                      onClick={() => toggleSelect(result.url)}
+                      onClick={() => toggleSelect(result.s3Url)}
                     >
                       <div
                         className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
@@ -838,7 +880,7 @@ export function SearchContainer() {
                       )}
                       <div className="search-result-overlay">
                         <a
-                          href={result.url}
+                          href={result.fullUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="search-result-link"
