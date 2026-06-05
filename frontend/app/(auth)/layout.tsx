@@ -14,7 +14,7 @@ export default function AuthLayout({
 
   return (
     <div className="authPage">
-      <AuthSplitCard mode={mode} redirectTo="/search" />
+      <AuthSplitCard mode={mode} redirectTo="/home" />
       {children}
     </div>
   )

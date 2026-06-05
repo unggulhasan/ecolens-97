@@ -82,6 +82,16 @@ def _build_item(item: dict) -> dict:
     return result
 
 
+def _get_user_email(event):
+    claims = (
+        event.get('requestContext', {})
+        .get('authorizer', {})
+        .get('jwt', {})
+        .get('claims', {})
+    )
+    return claims.get('email', '')
+
+
 def handle(event, context):
     # Parse page from query string (API Gateway v2 format)
     qs = event.get('queryStringParameters') or {}
@@ -92,9 +102,22 @@ def handle(event, context):
     except (ValueError, TypeError):
         page = 1
 
+    mine_only = str(qs.get('mine', '')).lower() in ('1', 'true', 'yes')
+    user_email = _get_user_email(event) if mine_only else ''
+
+    if mine_only and not user_email:
+        return {
+            'statusCode': 401,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Unauthorized'}),
+        }
+
     # Scan and sort by uploaded_at descending
     response = table.scan()
     items = response.get('Items', [])
+
+    if mine_only:
+        items = [item for item in items if item.get('user_id') == user_email]
 
     # Sort: most recent first. Items without uploaded_at go to the end.
     items.sort(

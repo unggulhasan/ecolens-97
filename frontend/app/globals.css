@@ -710,7 +710,8 @@
   }
 
   /* Search UI Styles */
-  .search-tabs-list {
+  .search-tabs-list,
+  .home-tabs-list {
     display: flex !important;
     flex-wrap: wrap !important;
     width: 100% !important;

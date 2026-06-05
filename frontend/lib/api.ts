@@ -165,14 +165,24 @@ export type PaginatedFilesResponse = {
   results: SearchBySpeciesResponseItem[]
 }
 
+export type ListAllFilesOptions = {
+  mine?: boolean
+}
+
 export async function listAllFiles(
   idToken: string,
-  page: number = 1
+  page: number = 1,
+  options: ListAllFilesOptions = {}
 ): Promise<PaginatedFilesResponse> {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
   if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
 
-  const response = await fetch(`${baseUrl}/all-files?page=${page}`, {
+  const params = new URLSearchParams({ page: String(page) })
+  if (options.mine) {
+    params.set("mine", "true")
+  }
+
+  const response = await fetch(`${baseUrl}/all-files?${params.toString()}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${idToken}`,
