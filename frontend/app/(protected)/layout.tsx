@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { signOutWithCognito } from "@/auth-actions"
 import { UserDropdown } from "@/components/user-dropdown"
+import { NotificationDropdown } from "@/components/notification-dropdown"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -29,7 +30,10 @@ export default async function ProtectedLayout({
                 <SidebarTrigger />
                 <span className="top-nav-logo">Aussie Ecolens</span>
               </div>
-              <UserDropdown user={user} />
+              <div className="flex items-center gap-3">
+                <NotificationDropdown />
+                <UserDropdown user={user} />
+              </div>
             </nav>
             <main className="flex flex-1 flex-col">{children}</main>
           </SidebarInset>

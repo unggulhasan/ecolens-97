@@ -147,6 +147,7 @@ def _process(bucket: str, key: str) -> dict:
         Key=out_key,
         Body=buf.tobytes(),
         ContentType="image/jpeg",
+        IfNoneMatch="*",
         Metadata={
             "user-email": user_id,
             "checksum": checksum,

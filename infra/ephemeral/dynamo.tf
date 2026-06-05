@@ -395,6 +395,7 @@ resource "aws_lambda_function" "query_5" {
     variables = {
       DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
       AWS_REGION_NAME     = var.aws_region
+      SNS_TOPIC_ARN       = aws_sns_topic.media_alerts.arn
     }
   }
 
@@ -493,6 +494,91 @@ resource "aws_lambda_permission" "query_6" {
   statement_id  = "AllowAPIGatewayInvokeQuery6"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.query_6.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+}
+
+
+# ------------------------------ QUERY 7 — list all files ----------------------
+data "archive_file" "lambda_query_7" {
+  type        = "zip"
+  source_dir  = "${path.root}/../../functions/list-all-files"
+  output_path = "${path.root}/build/lambda_query_7.zip"
+}
+
+resource "aws_iam_role" "lambda_exec_query_7" {
+  name               = "${var.app_name}-${var.environment}-list-all-files"
+  assume_role_policy = local.assume_role_policy_json
+  tags               = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_7_basic" {
+  role       = aws_iam_role.lambda_exec_query_7.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_7_dynamodb" {
+  role       = aws_iam_role.lambda_exec_query_7.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
+}
+
+# S3 GetObject on media bucket — needed for presigned thumbnail URL generation
+resource "aws_iam_policy" "s3_get_object_access" {
+  name = "${var.app_name}-${var.environment}-s3-get-object-access"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:GetObject"]
+      Resource = "${local.persistent_state.media_bucket_arn}/*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_7_s3" {
+  role       = aws_iam_role.lambda_exec_query_7.name
+  policy_arn = aws_iam_policy.s3_get_object_access.arn
+}
+
+resource "aws_lambda_function" "query_7" {
+  function_name    = "${var.app_name}-${var.environment}-list-all-files"
+  role             = aws_iam_role.lambda_exec_query_7.arn
+  handler          = "handler.handle"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_query_7.output_path
+  source_code_hash = data.archive_file.lambda_query_7.output_base64sha256
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
+      AWS_REGION_NAME     = var.aws_region
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_apigatewayv2_integration" "query_7" {
+  api_id                 = aws_apigatewayv2_api.main.id
+  integration_type       = "AWS_PROXY"
+  integration_method     = "POST"
+  integration_uri        = aws_lambda_function.query_7.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "query_7" {
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "GET /all-files"
+  target             = "integrations/${aws_apigatewayv2_integration.query_7.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_lambda_permission" "query_7" {
+  statement_id  = "AllowAPIGatewayInvokeQuery7"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.query_7.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
 }
