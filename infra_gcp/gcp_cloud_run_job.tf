@@ -9,12 +9,11 @@ resource "google_cloud_run_v2_job" "video_inference" {
       service_account = google_service_account.inference_runtime.email
 
       containers {
-        image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.ecolens_repo.repository_id}/ecolens-video-inference:latest"
-
+        image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/ecolens-repo/ecolens-video-inference:latest"
         resources {
           limits = {
-            cpu    = "2"
-            memory = "4Gi"
+            cpu    = "4"
+            memory = "16Gi"
           }
         }
 
