@@ -792,6 +792,19 @@ export function SearchContainer() {
                   {/* View mode toggle */}
                   <div className="flex items-center rounded-md border border-border overflow-hidden">
                     <button
+                      onClick={() => setViewMode("list")}
+                      title="List view"
+                      className={`flex h-9 w-9 items-center justify-center transition-colors ${
+                        viewMode === "list"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    </button>
+                    <button
                       onClick={() => setViewMode("grid")}
                       title="Icons view"
                       className={`flex h-9 w-9 items-center justify-center transition-colors ${
@@ -805,19 +818,6 @@ export function SearchContainer() {
                         <rect x="14" y="3" width="7" height="7" rx="1" />
                         <rect x="3" y="14" width="7" height="7" rx="1" />
                         <rect x="14" y="14" width="7" height="7" rx="1" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => setViewMode("list")}
-                      title="List view"
-                      className={`flex h-9 w-9 items-center justify-center transition-colors ${
-                        viewMode === "list"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background text-muted-foreground hover:bg-accent"
-                      }`}
-                    >
-                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
                       </svg>
                     </button>
                   </div>
@@ -1013,7 +1013,7 @@ export function SearchContainer() {
                               href={result.fullUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="truncate block text-xs text-primary underline-offset-2 hover:underline max-w-xs"
+                              className="truncate block text-xs text-black underline-offset-2 hover:underline max-w-xs"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {result.s3Url}
