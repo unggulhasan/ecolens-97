@@ -10,6 +10,7 @@ export type TagEditItem = {
 
 type UseEditTagsProps = {
   selectedUrls: Set<string>
+  results: FileResult[] | null
   onAfterTagsUpdate?: (updates: TagUpdate[]) => void
   onResultsChange?: React.Dispatch<React.SetStateAction<FileResult[] | null>>
   onClose: () => void
@@ -17,11 +18,23 @@ type UseEditTagsProps = {
 
 export function useEditTags({
   selectedUrls,
+  results,
   onAfterTagsUpdate,
   onResultsChange,
   onClose,
 }: UseEditTagsProps) {
   const { data: session } = useSession()
+
+  const existingTags = React.useMemo(() => {
+    const tagsSet = new Set<string>()
+    const selectedFiles = results?.filter((r) => selectedUrls.has(r.s3Url)) ?? []
+    selectedFiles.forEach((file) => {
+      Object.keys(file.tags).forEach((tag) => {
+        tagsSet.add(tag)
+      })
+    })
+    return Array.from(tagsSet)
+  }, [results, selectedUrls])
 
   const [editTags, setEditTags] = React.useState<TagEditItem[]>([
     { name: "", count: 1 },
@@ -29,15 +42,21 @@ export function useEditTags({
   const [editOperation, setEditOperation] = React.useState<1 | 0>(1)
   const [editLoading, setEditLoading] = React.useState(false)
   const [editResult, setEditResult] = React.useState<string | null>(null)
+  const [removeTags, setRemoveTags] = React.useState<string[]>([])
+  const [removeTagsInput, setRemoveTagsInput] = React.useState<string>("")
 
   const selectOperation = React.useCallback((op: 1 | 0) => {
     setEditOperation(op)
     setEditResult(null)
     setEditTags([{ name: "", count: 1 }])
+    setRemoveTags([])
+    setRemoveTagsInput("")
   }, [])
 
   const closeEditModal = React.useCallback(() => {
     setEditTags([{ name: "", count: 1 }])
+    setRemoveTags([])
+    setRemoveTagsInput("")
     setEditOperation(1)
     setEditResult(null)
     onClose()
@@ -46,6 +65,8 @@ export function useEditTags({
   const continueEditingTags = React.useCallback(() => {
     setEditResult(null)
     setEditTags([{ name: "", count: 1 }])
+    setRemoveTags([])
+    setRemoveTagsInput("")
   }, [])
 
   const addTagRow = React.useCallback(() => {
@@ -79,13 +100,23 @@ export function useEditTags({
     }
 
     const file_urls = Array.from(selectedUrls)
-    const tags = editTags
-      .map((t) => {
-        const name = t.name.trim().toLowerCase()
-        if (!name) return null
-        return editOperation === 1 ? `${name}:${t.count}` : name
-      })
-      .filter((t): t is string => t !== null)
+    let tags: string[] = []
+
+    if (editOperation === 1) {
+      tags = editTags
+        .map((t) => {
+          const name = t.name.trim().toLowerCase()
+          if (!name) return null
+          return `${name}:${t.count}`
+        })
+        .filter((t): t is string => t !== null)
+    } else {
+      const queryTags = [...removeTags]
+      if (removeTagsInput.trim()) {
+        queryTags.push(removeTagsInput.trim().toLowerCase())
+      }
+      tags = queryTags.map((t) => t.trim().toLowerCase()).filter(Boolean)
+    }
 
     if (tags.length === 0) {
       setEditResult("Error: Please enter at least one valid tag name.")
@@ -134,6 +165,8 @@ export function useEditTags({
     selectedUrls,
     editTags,
     editOperation,
+    removeTags,
+    removeTagsInput,
     onAfterTagsUpdate,
     onResultsChange,
   ])
@@ -142,6 +175,11 @@ export function useEditTags({
     editTags,
     editOperation,
     selectOperation,
+    existingTags,
+    removeTags,
+    setRemoveTags,
+    removeTagsInput,
+    setRemoveTagsInput,
     editLoading,
     editResult,
     closeEditModal,

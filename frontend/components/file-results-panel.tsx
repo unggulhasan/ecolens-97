@@ -134,6 +134,7 @@ export function FileResultsPanel({
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         selectedUrls={selectedUrls}
+        results={results}
         onAfterTagsUpdate={onAfterTagsUpdate}
         onResultsChange={onResultsChange}
       />
