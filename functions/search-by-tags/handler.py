@@ -67,10 +67,10 @@ def handle(event, context):
     for item in items:
         item_tags = item.get('tags', {})
         
-        # Check ALL requested tags meet minimum count (AND logic)
+        # Check ALL requested tags meet minimum count (AND logic). Support substring matching.
         match = all(
-            item_tags.get(tag, 0) >= Decimal(str(count))
-            for tag, count in body.items()
+            any(tag.strip().lower() in tag_name.lower() and count >= Decimal(str(min_count)) for tag_name, count in item_tags.items())
+            for tag, min_count in body.items()
         )
         
         if match:
