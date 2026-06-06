@@ -33,7 +33,7 @@ export function ModalEditTags({
   const {
     editTags,
     editOperation,
-    setEditOperation,
+    selectOperation,
     editLoading,
     editResult,
     closeEditModal,
@@ -92,26 +92,14 @@ export function ModalEditTags({
             <Button
               variant={editOperation === 1 ? "default" : "outline"}
               className="flex-1"
-              onClick={() => {
-                setEditOperation(1)
-                if (editResult) {
-                  setEditResult(null)
-                  setEditTags([{ name: "", count: 1 }])
-                }
-              }}
+              onClick={() => selectOperation(1)}
             >
               Add Tags
             </Button>
             <Button
               variant={editOperation === 0 ? "destructive" : "outline"}
               className="flex-1"
-              onClick={() => {
-                setEditOperation(0)
-                if (editResult) {
-                  setEditResult(null)
-                  setEditTags([{ name: "", count: 1 }])
-                }
-              }}
+              onClick={() => selectOperation(0)}
             >
               Remove Tags
             </Button>

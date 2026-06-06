@@ -30,6 +30,12 @@ export function useEditTags({
   const [editLoading, setEditLoading] = React.useState(false)
   const [editResult, setEditResult] = React.useState<string | null>(null)
 
+  const selectOperation = React.useCallback((op: 1 | 0) => {
+    setEditOperation(op)
+    setEditResult(null)
+    setEditTags([{ name: "", count: 1 }])
+  }, [])
+
   const closeEditModal = React.useCallback(() => {
     setEditTags([{ name: "", count: 1 }])
     setEditOperation(1)
@@ -135,10 +141,9 @@ export function useEditTags({
   return {
     editTags,
     editOperation,
-    setEditOperation,
+    selectOperation,
     editLoading,
     editResult,
-    setEditResult,
     closeEditModal,
     continueEditingTags,
     addTagRow,
