@@ -32,7 +32,8 @@ Result POST body (to AWS_RESULTS_URL):
     }
 
 Environment variables:
-    AWS_RESULTS_URL   — full URL, e.g. https://<id>.execute-api.<region>.amazonaws.com/inference-results
+    AWS_RESULTS_URL   — comma-separated list of URLs, e.g. https://<id>.execute-api.<region>.amazonaws.com/inference-results
+                        Results are POSTed to every URL independently (fan-out).
     CALLBACK_SECRET   — shared HMAC secret (injected from GCP Secret Manager)
 """
 
@@ -59,7 +60,10 @@ from frame_extractor import extract_frames
 from inference_service import download_video, run_inference_on_pil
 
 # ─── Results callback ─────────────────────────────────────────────────────────
-AWS_RESULTS_URL = os.environ.get("AWS_RESULTS_URL", "")
+# AWS_RESULTS_URL may be a comma-separated list of URLs for fan-out delivery.
+AWS_RESULTS_URLS: list[str] = [
+    u.strip() for u in os.environ.get("AWS_RESULTS_URL", "").split(",") if u.strip()
+]
 CALLBACK_SECRET = os.environ.get("CALLBACK_SECRET", "")
 
 _MAX_ATTEMPTS = 3
@@ -67,21 +71,14 @@ _BACKOFF_BASE = 0.5   # seconds; doubles on each retry
 _POST_TIMEOUT = 10    # seconds per attempt
 
 
-def _post_result(payload: dict) -> None:
-    """POST an inference result directly to AWS API Gateway with retry.
+def _post_to_url(url: str, payload: dict) -> None:
+    """POST an inference result to a single URL with retry.
 
     Retry policy (3 attempts, exponential backoff 0.5 → 1 → 2 s):
       - RequestException / 429 / 5xx  → retry
       - 2xx                           → success, return
       - 4xx (except 429)              → permanent failure, log and return
     """
-    if not AWS_RESULTS_URL:
-        print("[PROCESS] ERROR: AWS_RESULTS_URL is not set — cannot deliver result", flush=True)
-        return
-    if not CALLBACK_SECRET:
-        print("[PROCESS] ERROR: CALLBACK_SECRET is not set — cannot deliver result", flush=True)
-        return
-
     file_id = payload.get("file_id", "<unknown>")
     headers = {
         "Content-Type": "application/json",
@@ -91,7 +88,7 @@ def _post_result(payload: dict) -> None:
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
             resp = requests.post(
-                AWS_RESULTS_URL,
+                url,
                 json=payload,
                 headers=headers,
                 timeout=_POST_TIMEOUT,
@@ -100,7 +97,7 @@ def _post_result(payload: dict) -> None:
             last_exc = exc
             delay = _BACKOFF_BASE * (2 ** (attempt - 1))
             print(
-                f"[PROCESS] POST attempt {attempt}/{_MAX_ATTEMPTS} failed (network): {exc} "
+                f"[PROCESS] POST attempt {attempt}/{_MAX_ATTEMPTS} to {url} failed (network): {exc} "
                 f"— retrying in {delay:.1f}s",
                 flush=True,
             )
@@ -109,13 +106,13 @@ def _post_result(payload: dict) -> None:
 
         status = resp.status_code
         if 200 <= status < 300:
-            print(f"[PROCESS] Posted result to AWS file_id={file_id} status={status}", flush=True)
+            print(f"[PROCESS] Posted result to {url} file_id={file_id} status={status}", flush=True)
             return
 
         if status == 429 or status >= 500:
             delay = _BACKOFF_BASE * (2 ** (attempt - 1))
             print(
-                f"[PROCESS] POST attempt {attempt}/{_MAX_ATTEMPTS} transient status={status} "
+                f"[PROCESS] POST attempt {attempt}/{_MAX_ATTEMPTS} to {url} transient status={status} "
                 f"— retrying in {delay:.1f}s",
                 flush=True,
             )
@@ -125,17 +122,30 @@ def _post_result(payload: dict) -> None:
 
         # Permanent 4xx — log and give up
         print(
-            f"[PROCESS] POST permanent failure file_id={file_id} status={status}: "
+            f"[PROCESS] POST permanent failure to {url} file_id={file_id} status={status}: "
             f"{resp.text[:200]} — giving up",
             flush=True,
         )
         return
 
     print(
-        f"[PROCESS] All {_MAX_ATTEMPTS} POST attempts exhausted for file_id={file_id}: "
+        f"[PROCESS] All {_MAX_ATTEMPTS} POST attempts exhausted for {url} file_id={file_id}: "
         f"{last_exc} — inference result lost",
         flush=True,
     )
+
+
+def _post_result(payload: dict) -> None:
+    """Fan-out: POST the inference result to every configured URL independently."""
+    if not AWS_RESULTS_URLS:
+        print("[PROCESS] ERROR: AWS_RESULTS_URL is not set — cannot deliver result", flush=True)
+        return
+    if not CALLBACK_SECRET:
+        print("[PROCESS] ERROR: CALLBACK_SECRET is not set — cannot deliver result", flush=True)
+        return
+
+    for url in AWS_RESULTS_URLS:
+        _post_to_url(url, payload)
 
 
 # ─── Configuration (env-driven) ───────────────────────────────────────────────
@@ -194,7 +204,7 @@ def _infer_frame(frame_path: Path) -> list[dict[str, int]]:
 @functions_framework.cloud_event
 def process_video(cloud_event: CloudEvent) -> None:
     """Pub/Sub-triggered video inference entry point."""
-    print(f"[PROCESS] video-processor start aws_results_url={AWS_RESULTS_URL!r}", flush=True)
+    print(f"[PROCESS] video-processor start aws_results_urls={AWS_RESULTS_URLS!r}", flush=True)
     print(
         f"[PROCESS] Received CloudEvent type={cloud_event.get('type')} "
         f"id={cloud_event.get('id')}"

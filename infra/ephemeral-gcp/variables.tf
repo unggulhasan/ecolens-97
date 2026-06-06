@@ -23,7 +23,7 @@ variable "gcp_region" {
 }
 
 variable "aws_results_url" {
-  description = "Full URL of the AWS API Gateway POST /inference-results endpoint (output of ephemeral-aws). Injected directly into image-processor and video-processor as AWS_RESULTS_URL."
-  type        = string
-  default     = ""
+  description = "One or more AWS API Gateway POST /inference-results URLs (output of ephemeral-aws). Injected into image-processor and video-processor as a comma-separated AWS_RESULTS_URL env var; each processor fans-out to every URL independently."
+  type        = list(string)
+  default     = []
 }
