@@ -33,8 +33,4 @@ variable "gcp_function_url" {
   type        = string
 }
 
-variable "gcp_project_id" {
-  description = "GCP project ID (used for EventBridge SA email reference)"
-  type        = string
-  default     = "ecolens-498408"
-}
+

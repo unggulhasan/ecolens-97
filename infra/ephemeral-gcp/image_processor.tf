@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # image-processor — Cloud Run v2 service + Pub/Sub Eventarc trigger
 #
-# Pipeline (per gcp_image_processor_approach.md):
+# Pipeline:
 #   accept_inference (HTTP)
 #     ├── validates X-Callback-Secret
 #     └── publishes JSON to image_inference_requests topic
@@ -10,7 +10,8 @@
 #   Eventarc → Cloud Run image-processor
 #                  ├── downloads image via presigned_url
 #                  ├── runs MegaDetector + species classifier (ONNX)
-#                  └── logs the structured result JSON
+#                  └── POSTs result directly to AWS API Gateway
+#                       POST /inference-results  (X-Callback-Secret)
 #
 # Why Cloud Run + Eventarc (not Cloud Functions gen2):
 #   The container image is pre-built locally (see image_processor_layer.tf).
@@ -35,6 +36,14 @@ resource "google_storage_bucket_iam_member" "image_processor_models_reader" {
   bucket = local.persistent_state.models_bucket_name
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${google_service_account.image_processor_runtime.email}"
+}
+
+# Allow image-processor to read the shared callback secret from Secret Manager.
+resource "google_secret_manager_secret_iam_member" "image_processor_secret_accessor" {
+  project   = var.gcp_project_id
+  secret_id = "callback-secret"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.image_processor_runtime.email}"
 }
 
 # Structured logging (Cloud Run grants this by default but be explicit).
@@ -88,12 +97,34 @@ resource "google_cloud_run_v2_service" "image_processor" {
         name  = "CLASSIFIER_FILE"
         value = "model.onnx"
       }
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.gcp_project_id
+      }
+      env {
+        name  = "PYTHONUNBUFFERED"
+        value = "1"
+      }
+      env {
+        name  = "AWS_RESULTS_URL"
+        value = var.aws_results_url
+      }
+      env {
+        name = "CALLBACK_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = "callback-secret"
+            version = "latest"
+          }
+        }
+      }
     }
   }
 
   depends_on = [
     null_resource.image_processor_docker_build_push,
     google_storage_bucket_iam_member.image_processor_models_reader,
+    google_secret_manager_secret_iam_member.image_processor_secret_accessor,
   ]
 }
 
@@ -153,13 +184,37 @@ resource "google_eventarc_trigger" "image_processor_pubsub" {
   ]
 }
 
+# ── Patch Eventarc subscription ack deadline ─────────────────
+# Eventarc auto-creates a Pub/Sub push subscription with the default
+# ack deadline of 10 s.  Image inference (download + detector + classifier)
+# takes ~15-25 s, so Pub/Sub re-delivers the message to a new instance
+# before the first one can respond — causing duplicate runs.
+# We patch it to 600 s (the maximum) after the trigger is created.
+resource "null_resource" "image_processor_extend_ack_deadline" {
+  triggers = {
+    trigger_name = google_eventarc_trigger.image_processor_pubsub.name
+    topic_name   = google_pubsub_topic.image_inference_requests.name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -euo pipefail
+      SUB=$(gcloud pubsub subscriptions list \
+        --filter="topic:projects/${var.gcp_project_id}/topics/${google_pubsub_topic.image_inference_requests.name}" \
+        --format="value(name)" --limit=1)
+      echo "Patching ack deadline on: $SUB"
+      gcloud pubsub subscriptions update "$SUB" \
+        --ack-deadline=600 \
+        --min-retry-delay=60s \
+        --max-retry-delay=600s
+    EOT
+  }
+
+  depends_on = [google_eventarc_trigger.image_processor_pubsub]
+}
+
 # ── Outputs ──────────────────────────────────────────────────
 output "image_processor_service_name" {
   description = "Cloud Run service name for the image-processor worker"
   value       = google_cloud_run_v2_service.image_processor.name
-}
-
-output "image_processor_topic_id" {
-  description = "Pub/Sub topic ID for image inference requests"
-  value       = google_pubsub_topic.image_inference_requests.id
 }

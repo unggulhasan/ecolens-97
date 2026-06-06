@@ -21,3 +21,9 @@ variable "gcp_region" {
   type        = string
   default     = "australia-southeast2"
 }
+
+variable "aws_results_url" {
+  description = "Full URL of the AWS API Gateway POST /inference-results endpoint (output of ephemeral-aws). Injected directly into image-processor and video-processor as AWS_RESULTS_URL."
+  type        = string
+  default     = ""
+}

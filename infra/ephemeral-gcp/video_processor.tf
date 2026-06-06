@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # video-processor — Cloud Run v2 service + Pub/Sub Eventarc trigger
 #
-# Pipeline (per gcp_video_processor_approach.md):
+# Pipeline:
 #   accept_inference (HTTP)
 #     ├── validates X-Callback-Secret
 #     └── publishes JSON to video_inference_requests topic
@@ -12,7 +12,8 @@
 #                  ├── extracts frames at 1fps via FFmpeg
 #                  ├── runs ONNX inference per frame (2 threads)
 #                  ├── aggregates species counts (max per species)
-#                  └── logs the structured result JSON
+#                  └── POSTs result directly to AWS API Gateway
+#                       POST /inference-results  (X-Callback-Secret)
 #
 # Deployment: Cloud Run v2 (not CF gen2 as in approach doc) — pre-built
 # container pattern matches image_processor.tf for consistency.
@@ -34,6 +35,14 @@ resource "google_storage_bucket_iam_member" "video_processor_models_reader" {
   bucket = local.persistent_state.models_bucket_name
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${google_service_account.video_processor_runtime.email}"
+}
+
+# Allow video-processor to read the shared callback secret from Secret Manager.
+resource "google_secret_manager_secret_iam_member" "video_processor_secret_accessor" {
+  project   = var.gcp_project_id
+  secret_id = "callback-secret"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.video_processor_runtime.email}"
 }
 
 # Structured logging.
@@ -96,12 +105,26 @@ resource "google_cloud_run_v2_service" "video_processor" {
         name  = "MAX_FRAMES"
         value = "600"
       }
+      env {
+        name  = "AWS_RESULTS_URL"
+        value = var.aws_results_url
+      }
+      env {
+        name = "CALLBACK_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = "callback-secret"
+            version = "latest"
+          }
+        }
+      }
     }
   }
 
   depends_on = [
     null_resource.video_processor_docker_build_push,
     google_storage_bucket_iam_member.video_processor_models_reader,
+    google_secret_manager_secret_iam_member.video_processor_secret_accessor,
   ]
 }
 
@@ -188,9 +211,4 @@ resource "null_resource" "video_processor_extend_ack_deadline" {
 output "video_processor_service_name" {
   description = "Cloud Run service name for the video-processor worker"
   value       = google_cloud_run_v2_service.video_processor.name
-}
-
-output "video_processor_topic_id" {
-  description = "Pub/Sub topic ID for video inference requests"
-  value       = google_pubsub_topic.video_inference_requests.id
 }
