@@ -39,10 +39,11 @@ def handle(event, context):
             item_tags.get(tag, 0) >= 1
             for tag in detected_tags
         )
-        if item.get('file_type') == 'image':
-            matching.append(item.get('thumbnail_url'))
-        else:
-            matching.append(item.get('file_url'))
+        if match:
+            if item.get('file_type') == 'image':
+                matching.append(item.get('thumbnail_url'))
+            else:
+                matching.append(item.get('file_url'))
 
     return {
         'statusCode': 200,
