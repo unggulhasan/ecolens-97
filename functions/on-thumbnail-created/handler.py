@@ -32,39 +32,46 @@ s3 = boto3.client(
 )
 dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
+events = boto3.client("events", region_name=REGION_NAME)
 
 
-def _parse_s3_url(s3_url: str) -> tuple[str, str]:
-    """Parse s3://bucket/key into (bucket, key)."""
-    parsed = urlparse(s3_url)
-    if parsed.scheme != "s3":
-        raise ValueError(f"Expected s3:// URL, got: {s3_url}")
-    bucket = parsed.netloc
-    key = parsed.path.lstrip("/")
-    return bucket, key
+def _emit_metadata_created(bucket: str, meta: dict, thumb_key: str) -> None:
+    """Emit custom event so downstream services can react (resolver, et al)."""
+    try:
+        events.put_events(
+            Entries=[
+                {
+                    "Source": "ecolens.metadata.created",
+                    "DetailType": "MetadataCreated",
+                    "Detail": json.dumps({
+                        "file_id": meta["file_id"],
+                        "source_key": meta["source_key"],
+                        "checksum": meta["checksum"],
+                        "thumbnail_key": thumb_key,
+                        "file_type": meta["file_type"],
+                        "job_type": meta["job_type"],
+                    }),
+                    "EventBusName": "default",
+                }
+            ]
+        )
+        logger.info("Emitted MetadataCreated for file_id=%s", meta["file_id"])
+    except Exception as exc:
+        logger.error("Failed to emit MetadataCreated event: %s", exc)
 
 
-def _read_s3_metadata(bucket: str, key: str) -> dict:
-    """Read the S3 object metadata forwarded by the thumbnail Lambda or from the video."""
-    head = s3.head_object(Bucket=bucket, Key=key, ChecksumMode="ENABLED")
+def _read_thumbnail_metadata(bucket: str, key: str) -> dict:
+    """Read the S3 object metadata forwarded by the thumbnail Lambda."""
+    head = s3.head_object(Bucket=bucket, Key=key)
     meta = head.get("Metadata", {})
-    
-    if key.startswith("videos/"):
-        return {
-            "user_id": meta.get("user-email", ""),
-            "checksum": head.get("ChecksumSHA256", ""),
-            "source_key": key,
-            "file_id": meta.get("file-id", ""),
-            "is_video": True
-        }
-    else:
-        return {
-            "user_id": meta.get("user-email", ""),
-            "checksum": meta.get("checksum", ""),
-            "source_key": meta.get("source-key", ""),
-            "file_id": meta.get("file-id", ""),
-            "is_video": False
-        }
+    return {
+        "user_id": meta.get("user-email", ""),
+        "checksum": meta.get("checksum", ""),
+        "source_key": meta.get("source-key", ""),
+        "file_id": meta.get("file-id", ""),
+        "file_type": meta.get("file-type", "image"),
+        "job_type": meta.get("job-type", "permanent"),
+    }
 
 
 def _write_record(bucket: str, thumb_key: str, meta: dict) -> None:
@@ -76,7 +83,8 @@ def _write_record(bucket: str, thumb_key: str, meta: dict) -> None:
         "file_id": meta["file_id"] or "unknown",
         "checksum": meta["checksum"],
         "file_url": file_url,
-        "file_type": "video" if meta.get("is_video") else "image",
+        "thumbnail_url": thumbnail_url,
+        "file_type": meta["file_type"],
         "uploaded_at": datetime.datetime.utcnow().isoformat() + "Z",
         "user_id": meta["user_id"],
     }
@@ -111,10 +119,13 @@ def handle(event, context):
     decoded_key = urllib.parse.unquote_plus(key)
     logger.info("Processing s3://%s/%s", bucket, decoded_key)
 
-    meta = _read_s3_metadata(bucket, decoded_key)
+    meta = _read_thumbnail_metadata(bucket, decoded_key)
     logger.info("Metadata from S3 object: %s", meta)
 
     _write_record(bucket, decoded_key, meta)
+
+    # Notify downstream services AFTER the DynamoDB record exists
+    _emit_metadata_created(bucket, meta, decoded_key)
 
     return {
         "statusCode": 200,

@@ -22,6 +22,8 @@ override.tf.json
 .terraform.lock.hcl
 
 # ML models
+*.onnx
+*.pt
 ml_models/*.pt
 ml_models/*.txt
 ml_models/*.jpg
