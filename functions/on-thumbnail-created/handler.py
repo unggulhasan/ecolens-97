@@ -60,50 +60,29 @@ def _emit_metadata_created(bucket: str, meta: dict, thumb_key: str) -> None:
         logger.error("Failed to emit MetadataCreated event: %s", exc)
 
 
-def _parse_s3_url(s3_url: str) -> tuple[str, str]:
-    """Parse s3://bucket/key into (bucket, key)."""
-    parsed = urlparse(s3_url)
-    if parsed.scheme != "s3":
-        raise ValueError(f"Expected s3:// URL, got: {s3_url}")
-    bucket = parsed.netloc
-    key = parsed.path.lstrip("/")
-    return bucket, key
-
-
-def _read_s3_metadata(bucket: str, key: str) -> dict:
-    """Read the S3 object metadata forwarded by the thumbnail Lambda or from the video."""
-    head = s3.head_object(Bucket=bucket, Key=key, ChecksumMode="ENABLED")
+def _read_thumbnail_metadata(bucket: str, key: str) -> dict:
+    """Read the S3 object metadata forwarded by the thumbnail Lambda."""
+    head = s3.head_object(Bucket=bucket, Key=key)
     meta = head.get("Metadata", {})
-    if key.startswith("videos/"):
-        return {
-            "user_id": meta.get("user-email", ""),
-            "checksum": head.get("ChecksumSHA256", ""),
-            "source_key": key,
-            "file_id": meta.get("file-id", ""),
-            "file_type": "video",
-            "job_type": meta.get("job-type", "permanent"),
-        }
-    else:
-        return {
-            "user_id": meta.get("user-email", ""),
-            "checksum": meta.get("checksum", ""),
-            "source_key": meta.get("source-key", ""),
-            "file_id": meta.get("file-id", ""),
-            "file_type": "image",
-            "job_type": meta.get("job-type", "permanent"),
-        }
+    return {
+        "user_id": meta.get("user-email", ""),
+        "checksum": meta.get("checksum", ""),
+        "source_key": meta.get("source-key", ""),
+        "file_id": meta.get("file-id", ""),
+        "file_type": meta.get("file-type", "image"),
+        "job_type": meta.get("job-type", "permanent"),
+    }
 
 
 def _write_record(bucket: str, thumb_key: str, meta: dict) -> None:
     """Write the media file record to DynamoDB."""
     file_url = f"s3://{bucket}/{meta['source_key']}" if meta["source_key"] else ""
-    thumbnail_url = f"s3://{bucket}/{thumb_key}" if meta.get("file_type") != "video" else ""
+    thumbnail_url = f"s3://{bucket}/{thumb_key}" if not meta.get("is_video") else ""
 
     item = {
         "file_id": meta["file_id"] or "unknown",
         "checksum": meta["checksum"],
         "file_url": file_url,
-<<<<<<< HEAD
         "thumbnail_url": thumbnail_url,
         "file_type": meta["file_type"],
         "uploaded_at": datetime.datetime.utcnow().isoformat() + "Z",
@@ -140,7 +119,7 @@ def handle(event, context):
     decoded_key = urllib.parse.unquote_plus(key)
     logger.info("Processing s3://%s/%s", bucket, decoded_key)
 
-    meta = _read_s3_metadata(bucket, decoded_key)
+    meta = _read_thumbnail_metadata(bucket, decoded_key)
     logger.info("Metadata from S3 object: %s", meta)
 
     _write_record(bucket, decoded_key, meta)
