@@ -107,7 +107,7 @@ resource "google_cloud_run_v2_service" "image_processor" {
       }
       env {
         name  = "AWS_RESULTS_URL"
-        value = var.aws_results_url
+        value = join(",", var.aws_results_url)
       }
       env {
         name = "CALLBACK_SECRET"

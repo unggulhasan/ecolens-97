@@ -36,10 +36,19 @@ from botocore.config import Config
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+<<<<<<< HEAD
 REGION_NAME         = os.environ.get("REGION_NAME", "ap-southeast-4")
 DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 TMP_DYNAMODB_TABLE_NAME = os.environ["TMP_DYNAMODB_TABLE_NAME"]
 CALLBACK_SECRET_ARN = os.environ["CALLBACK_SECRET_ARN"]
+=======
+REGION_NAME              = os.environ.get("REGION_NAME", "ap-southeast-4")
+DYNAMODB_TABLE_NAME      = os.environ["DYNAMODB_TABLE_NAME"]
+CALLBACK_SECRET_ARN      = os.environ["CALLBACK_SECRET_ARN"]
+SUBSCRIPTIONS_TABLE_NAME = os.environ.get("SUBSCRIPTIONS_TABLE_NAME")
+NOTIFICATIONS_TABLE_NAME = os.environ.get("NOTIFICATIONS_TABLE_NAME")
+SNS_TOPIC_ARN            = os.environ.get("SNS_TOPIC_ARN")
+>>>>>>> 64f3ae05979954aaa0d79c4faf2e8f73faf9bcee
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
 table    = dynamodb.Table(DYNAMODB_TABLE_NAME)
@@ -181,6 +190,113 @@ def _find_matching_media(tag_map: dict, limit: int = 20) -> tuple[list, list]:
 
     return media_urls, thumbnail_urls
 
+def _trigger_notifications(file_id: str, url: str, uploaded_at: str, newly_added_tags: list[str]) -> None:
+    """Publish SNS alerts and write notifications to DynamoDB for matched subscriptions."""
+    if not newly_added_tags:
+        return
+
+    # 1. Retrieve all subscriptions if database or SNS notifications are enabled
+    subs = []
+    if SUBSCRIPTIONS_TABLE_NAME:
+        try:
+            subscriptions_table = dynamodb.Table(SUBSCRIPTIONS_TABLE_NAME)
+            response = subscriptions_table.scan()
+            subs = response.get("Items", [])
+            while "LastEvaluatedKey" in response:
+                response = subscriptions_table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+                subs.extend(response.get("Items", []))
+        except Exception as scan_err:
+            logger.error("Failed to scan subscriptions: %s", str(scan_err))
+
+    # 2. For each newly added tag, process notifications
+    for tag in newly_added_tags:
+        normalized_tag = tag.strip().lower()
+
+        # Find subscription tags that are substrings of the newly added tag
+        matching_sub_tags = []
+        for sub in subs:
+            sub_tags = sub.get("tags", [])
+            for sub_tag in sub_tags:
+                normalized_sub_tag = sub_tag.strip().lower()
+                if normalized_sub_tag in normalized_tag:
+                    matching_sub_tags.append(normalized_sub_tag)
+
+        # Deduplicate and include the actual tag itself
+        matched_policy_tags = list(set([normalized_tag] + matching_sub_tags))
+
+        # Publish to SNS
+        if SNS_TOPIC_ARN:
+            try:
+                sns = boto3.client("sns", region_name=REGION_NAME)
+                message_body = (
+                    f"Notification: A new wildlife file has been tagged in Aussie Ecolens!\n\n"
+                    f"Species Tag: {normalized_tag}\n"
+                    f"File URL: {url}\n"
+                    f"Timestamp: {uploaded_at}\n\n"
+                    f"Log in to the system to search and view the full file."
+                )
+                subject = f"Aussie Ecolens: New {normalized_tag} file uploaded"
+
+                logger.info("Publishing alert to SNS for tag: %s (matched filter tags: %s)", normalized_tag, matched_policy_tags)
+                sns.publish(
+                    TopicArn=SNS_TOPIC_ARN,
+                    Message=message_body,
+                    Subject=subject,
+                    MessageAttributes={
+                        "tag": {
+                            "DataType": "String.Array",
+                            "StringValue": json.dumps(matched_policy_tags)
+                        }
+                    }
+                )
+            except Exception as e:
+                logger.error("Failed to publish SNS notifications for tag %s: %s", normalized_tag, str(e))
+
+        # 3. Create database notification records for users who subscribed to a matching tag
+        if NOTIFICATIONS_TABLE_NAME:
+            try:
+                notifications_table = dynamodb.Table(NOTIFICATIONS_TABLE_NAME)
+                import uuid
+                import datetime
+
+                for sub in subs:
+                    user_id = sub.get("user_id")
+                    sub_tags = sub.get("tags", [])
+
+                    if not user_id or not sub_tags:
+                        continue
+
+                    # Find if any subscription tag is a substring of the newly added tag
+                    user_matching_tags = [
+                        st.strip().lower() for st in sub_tags
+                        if st.strip().lower() in normalized_tag
+                    ]
+
+                    if user_matching_tags:
+                        for matching_tag in user_matching_tags:
+                            notif_id = f"{datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}#{uuid.uuid4().hex[:8]}"
+                            timestamp = datetime.datetime.utcnow().isoformat() + "Z"
+
+                            title = f"Wildlife Detected: {matching_tag.capitalize()}"
+                            message = f"A new file containing \"{matching_tag}\" has been tagged in Aussie Ecolens."
+
+                            notifications_table.put_item(
+                                Item={
+                                    "user_id": user_id,
+                                    "notification_id": notif_id,
+                                    "title": title,
+                                    "message": message,
+                                    "read": False,
+                                    "timestamp": timestamp,
+                                    "file_url": url,
+                                    "tag": matching_tag
+                                }
+                            )
+                            logger.info("Saved notification for user %s, tag: %s (matching tag: %s)", user_id, normalized_tag, matching_tag)
+            except Exception as db_err:
+                logger.error("Failed to save database notifications for tag %s: %s", normalized_tag, str(db_err))
+
+
 def handle(event, context):
     logger.info("Received inference result callback")
 
@@ -311,7 +427,26 @@ def handle(event, context):
     tag_map = _flatten_result(result)
     completed_at = datetime.datetime.utcnow().isoformat() + "Z"
 
-    # ── 5. Write to DynamoDB ──────────────────────────────────
+    # ── 5. Fetch existing item to check existence and retrieve metadata ──
+    try:
+        response = table.get_item(Key={"file_id": file_id})
+        item = response.get("Item")
+    except ClientError as exc:
+        logger.error("DynamoDB GetItem failed for file_id=%s: %s", file_id, exc)
+        return _server_error(f"DynamoDB get failed: {exc.response['Error']['Code']}")
+
+    if not item:
+        logger.warning("No DynamoDB row for file_id=%s — cannot store result", file_id)
+        return {
+            "statusCode": 404,
+            "body": json.dumps({"error": "unknown file_id", "file_id": file_id}),
+            "headers": {"Content-Type": "application/json"},
+        }
+
+    url = item.get("file_url", "")
+    uploaded_at = item.get("uploaded_at", "unknown")
+
+    # ── 6. Write to DynamoDB ──────────────────────────────────
     try:
         table.update_item(
             Key={"file_id": file_id},
@@ -346,6 +481,10 @@ def handle(event, context):
         list(tag_map.keys()),
         completed_at,
     )
+
+    # ── 7. Publish notifications for matching tags ────────────
+    _trigger_notifications(file_id, url, uploaded_at, list(tag_map.keys()))
+
     return {
         "statusCode": 200,
         "body": json.dumps({"status": "stored", "file_id": file_id}),
