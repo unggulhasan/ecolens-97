@@ -19,7 +19,7 @@ import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
 import { useSession } from "next-auth/react"
-import { lookupByThumbnail, searchBySpecies } from "@/lib/api"
+import { lookupByThumbnail, searchBySpecies, searchByTags } from "@/lib/api"
 import { formatFileResults, type FileResult } from "@/lib/file-results"
 import { FileResultsPanel } from "@/components/file-results-panel"
 
@@ -105,33 +105,26 @@ export function SearchContainer() {
 
   // ---- Placeholder search functions ----
   const searchTagsCount = async (tags: TagCountInput[]): Promise<FileResult[]> => {
-    console.log("Searching tags with minimum count:", tags)
-    return new Promise((resolve) => setTimeout(() => resolve([
-      {
-        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
-        isOwner: true,
-        userId: "you@example.com",
-        tags: { kangaroo: 2 },
-      },
-      {
-        url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
-        fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
-        s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
-        isOwner: true,
-        userId: "you@example.com",
-        tags: { koala: 1, emu: 2 },
-      },
-      {
-        url: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
-        fullUrl: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
-        s3Url: "s3://mock-bucket/images/uuid-3/file3.jpg",
-        isOwner: false,
-        userId: "other@example.com",
-        tags: { dingo: 1 },
-      },
-    ]), 1000))
+    const idToken = (session as { idToken?: string })?.idToken
+    if (!idToken) {
+      throw new Error("Not authenticated. Please log in again.")
+    }
+
+    const tagsRecord: Record<string, number> = {}
+    tags.forEach((row) => {
+      const name = row.tag.trim().toLowerCase()
+      if (name) {
+        tagsRecord[name] = typeof row.count === "number" ? row.count : 1
+      }
+    })
+
+    if (Object.keys(tagsRecord).length === 0) {
+      throw new Error("Please enter at least one tag/species with count.")
+    }
+
+    const data = await searchByTags(idToken, tagsRecord)
+    const userEmail = session?.user?.email || ""
+    return formatFileResults(data, userEmail)
   }
 
   const searchTagsOnly = async (tags: string[]): Promise<FileResult[]> => {
