@@ -43,6 +43,7 @@ export function SearchContainer() {
 
   // Tab 2
   const [tagsOnly, setTagsOnly] = React.useState<string[]>([])
+  const [tagsOnlyInput, setTagsOnlyInput] = React.useState<string>("")
 
   // Tab 3
   const [thumbnailUrl, setThumbnailUrl] = React.useState<string>("")
@@ -61,11 +62,13 @@ export function SearchContainer() {
     if (activeTab === "tags-count") {
       return tagsCount.length === 0 || tagsCount.some(row => row.tag.trim() === "" || row.count === "")
     }
-    if (activeTab === "tags-only") return tagsOnly.length === 0
+    if (activeTab === "tags-only") {
+      return tagsOnly.length === 0 && tagsOnlyInput.trim() === ""
+    }
     if (activeTab === "thumbnail") return thumbnailUrl.trim() === ""
     if (activeTab === "file") return selectedFile === null
     return true
-  }, [activeTab, tagsCount, tagsOnly, thumbnailUrl, selectedFile])
+  }, [activeTab, tagsCount, tagsOnly, tagsOnlyInput, thumbnailUrl, selectedFile])
 
   // ---- Tag row handlers ----
   const addTagRow = () => {
@@ -192,8 +195,12 @@ export function SearchContainer() {
         if (validTags.length === 0) throw new Error("Please specify at least one tag.")
         data = await searchTagsCount(validTags)
       } else if (activeTab === "tags-only") {
-        if (tagsOnly.length === 0) throw new Error("Please input at least one tag/species.")
-        data = await searchTagsOnly(tagsOnly)
+        const queryTags = [...tagsOnly]
+        if (tagsOnlyInput.trim()) {
+          queryTags.push(tagsOnlyInput.trim().toLowerCase())
+        }
+        if (queryTags.length === 0) throw new Error("Please input at least one tag/species.")
+        data = await searchTagsOnly(queryTags)
       } else if (activeTab === "thumbnail") {
         if (!thumbnailUrl.trim()) throw new Error("Please input a thumbnail URL.")
         data = await searchThumbnail(thumbnailUrl)
@@ -333,6 +340,8 @@ export function SearchContainer() {
                 placeholder="Tag name (e.g. wombat)"
                 tags={tagsOnly}
                 onChange={setTagsOnly}
+                inputValue={tagsOnlyInput}
+                onInputChange={setTagsOnlyInput}
                 suggestions={WILDLIFE_SUGGESTIONS}
                 className="bg-white dark:bg-slate-950"
               />
