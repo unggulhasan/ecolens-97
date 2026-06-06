@@ -35,11 +35,14 @@ resource "aws_lambda_function" "accept_results" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
+      DYNAMODB_TABLE_NAME      = aws_dynamodb_table.media_files.name
       # ARN only — the actual secret value is fetched at cold start via
       # secretsmanager:GetSecretValue so it never lands in env (plaintext in TF state).
-      CALLBACK_SECRET_ARN = local.persistent_state.callback_secret_arn
-      REGION_NAME         = var.aws_region
+      CALLBACK_SECRET_ARN      = local.persistent_state.callback_secret_arn
+      REGION_NAME              = var.aws_region
+      SNS_TOPIC_ARN            = aws_sns_topic.media_alerts.arn
+      SUBSCRIPTIONS_TABLE_NAME = aws_dynamodb_table.user_subscriptions.name
+      NOTIFICATIONS_TABLE_NAME = aws_dynamodb_table.user_notifications.name
     }
   }
 
@@ -77,7 +80,7 @@ resource "aws_iam_role_policy" "accept_results" {
       {
         Sid    = "UpdateInferenceTags"
         Effect = "Allow"
-        Action = ["dynamodb:UpdateItem"]
+        Action = ["dynamodb:UpdateItem", "dynamodb:GetItem"]
         # GetItem is also granted so the Lambda can confirm the record exists
         # before UpdateItem (used by the ConditionalExpression path).
         Resource = aws_dynamodb_table.media_files.arn
@@ -115,4 +118,20 @@ resource "aws_lambda_permission" "accept_results_apigw" {
   function_name = aws_lambda_function.accept_results.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+}
+
+# Attach notifications/SNS policies to the accept-results role
+resource "aws_iam_role_policy_attachment" "lambda_accept_results_sns" {
+  role       = aws_iam_role.accept_results.name
+  policy_arn = aws_iam_policy.sns_publish_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_accept_results_notifications" {
+  role       = aws_iam_role.accept_results.name
+  policy_arn = aws_iam_policy.dynamodb_notifications_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_accept_results_subscriptions" {
+  role       = aws_iam_role.accept_results.name
+  policy_arn = aws_iam_policy.dynamodb_subscriptions_access.arn
 }
