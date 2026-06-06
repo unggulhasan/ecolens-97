@@ -61,7 +61,7 @@ resource "aws_iam_policy" "s3_delete_access" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["s3:DeleteObject"]
-      Resource = "arn:aws:s3:::${var.app_name}-${var.environment}-*/*"
+      Resource = "${local.persistent_state.media_bucket_arn}/*"
     }]
   })
 }
