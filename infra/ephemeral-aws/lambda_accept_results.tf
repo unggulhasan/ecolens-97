@@ -35,6 +35,15 @@ resource "aws_lambda_function" "accept_results" {
 
   environment {
     variables = {
+<<<<<<< HEAD
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
+      TMP_DYNAMODB_TABLE_NAME = aws_dynamodb_table.tmp_query.name
+      # ARN only — the actual secret value is fetched at cold start via
+      # secretsmanager:GetSecretValue so it never lands in env (plaintext in TF state).
+      CALLBACK_SECRET_ARN = local.persistent_state.callback_secret_arn
+      REGION_NAME         = var.aws_region
+      AWS_REGION_NAME     = var.aws_region
+=======
       DYNAMODB_TABLE_NAME      = aws_dynamodb_table.media_files.name
       # ARN only — the actual secret value is fetched at cold start via
       # secretsmanager:GetSecretValue so it never lands in env (plaintext in TF state).
@@ -43,6 +52,7 @@ resource "aws_lambda_function" "accept_results" {
       SNS_TOPIC_ARN            = aws_sns_topic.media_alerts.arn
       SUBSCRIPTIONS_TABLE_NAME = aws_dynamodb_table.user_subscriptions.name
       NOTIFICATIONS_TABLE_NAME = aws_dynamodb_table.user_notifications.name
+>>>>>>> 64f3ae05979954aaa0d79c4faf2e8f73faf9bcee
     }
   }
 
@@ -91,6 +101,18 @@ resource "aws_iam_role_policy" "accept_results" {
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = local.persistent_state.callback_secret_arn
       },
+<<<<<<< HEAD
+      {
+        Sid    = "WriteTemporaryInferenceTags"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = aws_dynamodb_table.tmp_query.arn
+      },
+=======
+>>>>>>> 64f3ae05979954aaa0d79c4faf2e8f73faf9bcee
     ]
   })
 }
