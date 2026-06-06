@@ -135,7 +135,7 @@ terraform init && terraform apply
 terraform output gcp_function_url
 ```
 
-Also copy the `inference_results_url` output from `ephemeral-aws` (step 4) into `terraform.tfvars` as `aws_results_url` before applying — the two Cloud Run services need it to POST results back.
+Also copy the `inference_results_url` output from `ephemeral-aws` (step 4) into `terraform.tfvars` as `aws_results_url` before applying — the two Cloud Run services need it to POST results back. `aws_results_url` is a **list of strings**, so set it as a Terraform list literal (e.g. `aws_results_url = ["https://..."]`); you can add multiple URLs and each processor will POST to all of them independently.
 
 ### Step 4 — `ephemeral-aws` *(teammate)*
 
@@ -159,7 +159,7 @@ terraform output inference_results_url
 |---|---|---|
 | `callback_secret` | you → teammate | Generated in prerequisites |
 | `gcp_function_url` | you → teammate | `terraform output gcp_function_url` from `ephemeral-gcp` |
-| `aws_results_url` | teammate → you | `terraform output inference_results_url` from `ephemeral-aws` |
+| `aws_results_url` | teammate → you | `terraform output inference_results_url` from `ephemeral-aws` (a list — wrap in `["..."]` in tfvars) |
 
 ---
 
