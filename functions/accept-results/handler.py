@@ -30,20 +30,59 @@ from decimal import Decimal
 import boto3
 from botocore.exceptions import ClientError
 
+from urllib.parse import urlparse
+from botocore.config import Config
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 REGION_NAME         = os.environ.get("REGION_NAME", "ap-southeast-4")
 DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
+TMP_DYNAMODB_TABLE_NAME = os.environ["TMP_DYNAMODB_TABLE_NAME"]
 CALLBACK_SECRET_ARN = os.environ["CALLBACK_SECRET_ARN"]
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
 table    = dynamodb.Table(DYNAMODB_TABLE_NAME)
+tmp_table   = dynamodb.Table(TMP_DYNAMODB_TABLE_NAME)
 sm       = boto3.client("secretsmanager", region_name=REGION_NAME)
+
+s3 = boto3.client(
+    "s3",
+    region_name=REGION_NAME,
+    endpoint_url=f"https://s3.{REGION_NAME}.amazonaws.com",
+    config=Config(signature_version="s3v4"),
+)
+
+sm = boto3.client("secretsmanager", region_name=REGION_NAME)
+
+PRESIGN_EXPIRY = 3600
+
 
 # Module-level cache — populated on first cold start, reused on warm invocations.
 _CALLBACK_SECRET: str = ""
 
+
+def _generate_presigned_get(thumbnail_url: str) -> str | None:
+    """Generate a 1-hour presigned GET URL for an S3 thumbnail."""
+    try:
+        bucket, key = _parse_s3_url(thumbnail_url)
+        return s3.generate_presigned_url(
+            ClientMethod='get_object',
+            Params={'Bucket': bucket, 'Key': key},
+            ExpiresIn=PRESIGN_EXPIRY,
+        )
+    except Exception as e:
+        print(f"Warning: Failed to generate presigned URL for {thumbnail_url}: {e}")
+        return None
+    
+def _parse_s3_url(s3_url: str) -> tuple[str, str]:
+    """Parse s3://bucket/key into (bucket, key)."""
+    parsed = urlparse(s3_url)
+    if parsed.scheme != 's3':
+        raise ValueError(f"Expected s3:// URL, got: {s3_url}")
+    bucket = parsed.netloc
+    key = parsed.path.lstrip('/')
+    return bucket, key
 
 def _get_secret() -> str:
     """Fetch and cache the callback secret from AWS Secrets Manager."""
@@ -97,6 +136,50 @@ def _flatten_result(result: list) -> dict:
                 logger.warning("Skipping invalid count for species %r: %r", species, count)
     return tag_map
 
+def _find_matching_media(tag_map: dict, limit: int = 20) -> tuple[list, list]:
+    """Find media rows that contain all tags returned by GCP.
+
+    Returns:
+        media_urls: presigned URLs for matched media files
+        thumbnail_urls: presigned URLs for matched thumbnails
+    """
+    media_urls = []
+    thumbnail_urls = []
+
+    required_tags = set(tag_map.keys())
+
+    if not required_tags:
+        return media_urls, thumbnail_urls
+
+    response = table.scan()
+    items = response.get("Items", [])
+
+    for item in items:
+        db_tags = item.get("tags") or {}
+
+        if not isinstance(db_tags, dict):
+            continue
+
+        db_tag_names = set(db_tags.keys())
+
+        # Only match rows that contain ALL tags returned by GCP.
+        if not required_tags.issubset(db_tag_names):
+            continue
+
+        file_s3_url = item.get("file_url")
+        thumbnail_s3_url = item.get("thumbnail_url")
+
+        presigned_file_url = _generate_presigned_get(file_s3_url)
+        presigned_thumbnail_url = _generate_presigned_get(thumbnail_s3_url)
+
+        if presigned_file_url:
+            media_urls.append(presigned_file_url)
+            thumbnail_urls.append(presigned_thumbnail_url)
+
+        if len(media_urls) >= limit:
+            break
+
+    return media_urls, thumbnail_urls
 
 def handle(event, context):
     logger.info("Received inference result callback")
@@ -141,12 +224,86 @@ def handle(event, context):
 
     # ── 3. Temporary jobs: no DynamoDB row, just ack ──────────
     if job_type == "temporary":
+        tag_map = _flatten_result(result)
+
+        try:
+            # 1. Find the existing temp row first
+            existing_temp_row = tmp_table.get_item(
+                Key={"file_id": file_id}
+            ).get("Item")
+
+            if not existing_temp_row:
+                logger.warning(
+                    "No temporary query row found for file_id=%s — cannot update result",
+                    file_id,
+                )
+                return {
+                    "statusCode": 404,
+                    "body": json.dumps({
+                        "error": "unknown temporary file_id",
+                        "file_id": file_id,
+                    }),
+                    "headers": {"Content-Type": "application/json"},
+                }
+
+            # 2. Only query main table if GCP returned tags
+            if tag_map:
+                media_urls, thumbnail_urls = _find_matching_media(tag_map)
+            else:
+                media_urls, thumbnail_urls = [], []
+
+            # 3. is_found is true only when matching media was found
+            is_found = len(media_urls) > 0
+
+            # 4. Update existing temp row
+            tmp_table.update_item(
+                Key={"file_id": file_id},
+                UpdateExpression=(
+                    "SET file_type = :ft, "
+                    "tags = :t, "
+                    "#st = :s, "
+                    "media_url = :mu, "
+                    "thumbnail_url = :tu, "
+                    "is_found = :f"
+                ),
+                ExpressionAttributeNames={
+                    "#st": "status",
+                },
+                ExpressionAttributeValues={
+                    ":ft": file_type,
+                    ":t": tag_map,
+                    ":s": "completed",
+                    ":mu": media_urls,
+                    ":tu": thumbnail_urls,
+                    ":f": is_found,
+                },
+            )
+
+        except ClientError as exc:
+            logger.error(
+                "Temporary result processing failed for file_id=%s: %s",
+                file_id,
+                exc,
+            )
+            return _server_error(
+                f"Temporary result processing failed: {exc.response['Error']['Code']}"
+            )
+
         logger.info(
-            "Temporary job result for file_id=%s — not persisted: %s", file_id, result
+            "Updated temporary query row for file_id=%s is_found=%s matches_count=%d",
+            file_id,
+            is_found,
+            len(media_urls),
         )
+
         return {
             "statusCode": 200,
-            "body": json.dumps({"status": "ack", "file_id": file_id}),
+            "body": json.dumps({
+                "status": "stored_temp",
+                "file_id": file_id,
+                "is_found": is_found,
+                "matches_count": len(media_urls),
+            }),
             "headers": {"Content-Type": "application/json"},
         }
 

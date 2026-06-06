@@ -36,10 +36,12 @@ resource "aws_lambda_function" "accept_results" {
   environment {
     variables = {
       DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
+      TMP_DYNAMODB_TABLE_NAME = aws_dynamodb_table.tmp_query.name
       # ARN only — the actual secret value is fetched at cold start via
       # secretsmanager:GetSecretValue so it never lands in env (plaintext in TF state).
       CALLBACK_SECRET_ARN = local.persistent_state.callback_secret_arn
       REGION_NAME         = var.aws_region
+      AWS_REGION_NAME     = var.aws_region
     }
   }
 
@@ -87,7 +89,16 @@ resource "aws_iam_role_policy" "accept_results" {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = local.persistent_state.callback_secret_arn
-      }
+      },
+      {
+        Sid    = "WriteTemporaryInferenceTags"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = aws_dynamodb_table.tmp_query.arn
+      },
     ]
   })
 }
