@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { TagInput } from "@/components/ui/tag-input"
+import { AutocompleteInput } from "@/components/ui/autocomplete-input"
+import { WILDLIFE_SUGGESTIONS } from "@/lib/constants"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
@@ -271,12 +273,13 @@ export function SearchContainer() {
               <div className="space-y-3">
                 {tagsCount.map((row) => (
                   <div key={row.id} className="search-tag-row">
-                    <Input
+                    <AutocompleteInput
                       placeholder="Tag name (e.g. kangaroo)"
                       value={row.tag}
                       onChange={(e) =>
                         updateTagRow(row.id, "tag", e.target.value)
                       }
+                      suggestions={WILDLIFE_SUGGESTIONS}
                       className="flex-1 bg-white dark:bg-slate-950"
                     />
                     <Input
@@ -337,6 +340,7 @@ export function SearchContainer() {
                 placeholder="e.g. kangaroo, koala, emu"
                 tags={tagsOnly}
                 onChange={setTagsOnly}
+                suggestions={WILDLIFE_SUGGESTIONS}
                 className="bg-white dark:bg-slate-950"
               />
               <p className="text-xs text-muted-foreground">

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TagInput } from "@/components/ui/tag-input"
+import { WILDLIFE_SUGGESTIONS } from "@/lib/constants"
 
 type SubscriptionFormFieldsProps = {
   email: string
@@ -70,6 +71,7 @@ export function SubscriptionFormFields({
               placeholder="e.g. kangaroo, koala, emu"
               tags={tags}
               onChange={setTags}
+              suggestions={WILDLIFE_SUGGESTIONS}
               disabled={loading}
             />
             <p className="text-xs text-muted-foreground">
