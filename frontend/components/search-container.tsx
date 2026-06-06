@@ -274,7 +274,7 @@ export function SearchContainer() {
                 {tagsCount.map((row) => (
                   <div key={row.id} className="search-tag-row">
                     <AutocompleteInput
-                      placeholder="Tag name (e.g. kangaroo)"
+                      placeholder="Tag name (e.g. wombat)"
                       value={row.tag}
                       onChange={(e) =>
                         updateTagRow(row.id, "tag", e.target.value)
@@ -337,14 +337,15 @@ export function SearchContainer() {
             <div className="search-input-group">
               <span className="text-sm font-medium">Enter Species/Tags</span>
               <TagInput
-                placeholder="e.g. kangaroo, koala, emu"
+                placeholder="Tag name (e.g. wombat)"
                 tags={tagsOnly}
                 onChange={setTagsOnly}
                 suggestions={WILDLIFE_SUGGESTIONS}
                 className="bg-white dark:bg-slate-950"
               />
               <p className="text-xs text-muted-foreground">
-                Type a tag and press Enter or comma to confirm. Matches files that contain at least one of each input tag.
+                Type a tag and press Enter or comma to confirm. Matches files
+                that contain at least one of each input tag.
               </p>
             </div>
           </TabsContent>
@@ -360,7 +361,8 @@ export function SearchContainer() {
                 className="bg-white dark:bg-slate-950"
               />
               <p className="text-xs text-muted-foreground">
-                Enter the exact S3 URI of the thumbnail to find the original full-sized file.
+                Enter the exact S3 URI of the thumbnail to find the original
+                full-sized file.
               </p>
             </div>
           </TabsContent>

@@ -258,20 +258,20 @@ export function FileResultsPanel({
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={closeEditModal}
       />
-      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md p-6 flex flex-col gap-5">
+      <div className="relative flex w-full max-w-md flex-col gap-5 rounded-2xl border border-border bg-card p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold">Edit Tags</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {selectedCount} file{selectedCount !== 1 ? "s" : ""} selected
             </p>
           </div>
           <button
             onClick={closeEditModal}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground transition-colors hover:text-foreground"
           >
             <svg
-              className="w-5 h-5"
+              className="h-5 w-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -316,16 +316,16 @@ export function FileResultsPanel({
             </Button>
           </div>
         </div>
-        
+
         <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <label className="text-sm font-medium">Tags</label>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={addTagRow}
-              className="h-8 px-2.5 text-xs rounded-full border-border hover:bg-accent"
+              className="h-8 rounded-full border-border px-2.5 text-xs hover:bg-accent"
             >
               + Add Tag
             </Button>
@@ -333,35 +333,53 @@ export function FileResultsPanel({
 
           <div className="flex flex-col gap-2.5">
             {editTags.map((tagItem, idx) => (
-              <div key={idx} className="flex gap-2 items-center">
+              <div key={idx} className="flex items-center gap-2">
                 <div className="flex-1">
                   <AutocompleteInput
                     suggestions={WILDLIFE_SUGGESTIONS}
-                    placeholder="e.g. koala"
+                    placeholder="Tag name (e.g. wombat)"
                     value={tagItem.name}
-                    onChange={(e) => updateTagRow(idx, { name: e.target.value })}
-                    onSelectSuggestion={(val) => updateTagRow(idx, { name: val })}
-                    className="w-full bg-white dark:bg-slate-950 rounded-full border border-input"
+                    onChange={(e) =>
+                      updateTagRow(idx, { name: e.target.value })
+                    }
+                    onSelectSuggestion={(val) =>
+                      updateTagRow(idx, { name: val })
+                    }
+                    className="w-full rounded-full border border-input bg-white dark:bg-slate-950"
                   />
                 </div>
                 {editOperation === 1 && (
                   <Input
                     type="number"
                     min="1"
-                    className="w-24 bg-white dark:bg-slate-950 rounded-full border border-input"
+                    className="w-24 rounded-full border border-input bg-white dark:bg-slate-950"
                     placeholder="Count"
                     value={tagItem.count}
-                    onChange={(e) => updateTagRow(idx, { count: parseInt(e.target.value) || 1 })}
+                    onChange={(e) =>
+                      updateTagRow(idx, {
+                        count: parseInt(e.target.value) || 1,
+                      })
+                    }
                   />
                 )}
                 {editTags.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeTagRow(idx)}
-                    className="text-muted-foreground hover:text-destructive p-1.5 transition-colors shrink-0"
+                    className="shrink-0 p-1.5 text-muted-foreground transition-colors hover:text-destructive"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 )}
@@ -372,7 +390,7 @@ export function FileResultsPanel({
 
         {editResult?.startsWith("Successfully") ? (
           <>
-            <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+            <div className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
               {editResult}
             </div>
             <div className="flex justify-end gap-2 pt-1">
@@ -386,7 +404,7 @@ export function FileResultsPanel({
           </>
         ) : editResult ? (
           <>
-            <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+            <div className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
               {editResult}
             </div>
             <div className="flex justify-end gap-2 pt-1">
@@ -395,7 +413,9 @@ export function FileResultsPanel({
               </Button>
               <Button
                 onClick={handleEditTags}
-                disabled={!editTags.some((t) => t.name.trim() !== "") || editLoading}
+                disabled={
+                  !editTags.some((t) => t.name.trim() !== "") || editLoading
+                }
                 className="upload-action-button"
               >
                 {editLoading ? "Applying..." : "Try Again"}
@@ -409,7 +429,9 @@ export function FileResultsPanel({
             </Button>
             <Button
               onClick={handleEditTags}
-              disabled={!editTags.some((t) => t.name.trim() !== "") || editLoading}
+              disabled={
+                !editTags.some((t) => t.name.trim() !== "") || editLoading
+              }
               className="upload-action-button"
             >
               {editLoading && (
