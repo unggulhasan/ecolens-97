@@ -21,8 +21,8 @@ export function SubscriptionsForm({
     subscriptions,
     email,
     setEmail,
-    tagsString,
-    setTagsString,
+    tags,
+    setTags,
     loading,
     checkingStatus,
     isEditing,
@@ -47,8 +47,8 @@ export function SubscriptionsForm({
       <SubscriptionFormFields
         email={email}
         setEmail={setEmail}
-        tagsString={tagsString}
-        setTagsString={setTagsString}
+        tags={tags}
+        setTags={setTags}
         loading={loading}
         isEditing={isEditing}
         error={error}

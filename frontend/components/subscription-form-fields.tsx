@@ -2,12 +2,13 @@ import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { TagInput } from "@/components/ui/tag-input"
 
 type SubscriptionFormFieldsProps = {
   email: string
   setEmail: (val: string) => void
-  tagsString: string
-  setTagsString: (val: string) => void
+  tags: string[]
+  setTags: (val: string[]) => void
   loading: boolean
   isEditing: boolean
   error: string | null
@@ -19,8 +20,8 @@ type SubscriptionFormFieldsProps = {
 export function SubscriptionFormFields({
   email,
   setEmail,
-  tagsString,
-  setTagsString,
+  tags,
+  setTags,
   loading,
   isEditing,
   error,
@@ -64,18 +65,15 @@ export function SubscriptionFormFields({
             <label htmlFor="sub-tags" className="text-sm font-semibold text-foreground">
               Species/Tags to Watch
             </label>
-            <Input
+            <TagInput
               id="sub-tags"
-              type="text"
               placeholder="e.g. kangaroo, koala, emu"
-              value={tagsString}
-              onChange={(e) => setTagsString(e.target.value)}
-              className="w-full"
+              tags={tags}
+              onChange={setTags}
               disabled={loading}
-              required
             />
             <p className="text-xs text-muted-foreground">
-              Enter a comma-separated list of species.
+              Type a tag and press Enter or comma to confirm.
             </p>
           </div>
 

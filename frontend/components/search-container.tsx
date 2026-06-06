@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { TagInput } from "@/components/ui/tag-input"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
@@ -39,7 +40,7 @@ export function SearchContainer() {
   ])
 
   // Tab 2
-  const [tagsOnly, setTagsOnly] = React.useState<string>("")
+  const [tagsOnly, setTagsOnly] = React.useState<string[]>([])
 
   // Tab 3
   const [thumbnailUrl, setThumbnailUrl] = React.useState<string>("")
@@ -58,7 +59,7 @@ export function SearchContainer() {
     if (activeTab === "tags-count") {
       return tagsCount.length === 0 || tagsCount.some(row => row.tag.trim() === "" || row.count === "")
     }
-    if (activeTab === "tags-only") return tagsOnly.trim() === ""
+    if (activeTab === "tags-only") return tagsOnly.length === 0
     if (activeTab === "thumbnail") return thumbnailUrl.trim() === ""
     if (activeTab === "file") return selectedFile === null
     return true
@@ -131,15 +132,12 @@ export function SearchContainer() {
     ]), 1000))
   }
 
-  const searchTagsOnly = async (tagsString: string): Promise<FileResult[]> => {
+  const searchTagsOnly = async (tags: string[]): Promise<FileResult[]> => {
     const idToken = (session as { idToken?: string })?.idToken
     if (!idToken) {
       throw new Error("Not authenticated. Please log in again.")
     }
-    const species = tagsString
-      .split(",")
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean)
+    const species = tags.map((t) => t.trim().toLowerCase()).filter(Boolean)
 
     if (species.length === 0) {
       throw new Error("Please enter at least one tag/species.")
@@ -199,7 +197,7 @@ export function SearchContainer() {
         if (validTags.length === 0) throw new Error("Please specify at least one tag.")
         data = await searchTagsCount(validTags)
       } else if (activeTab === "tags-only") {
-        if (!tagsOnly.trim()) throw new Error("Please input at least one tag/species.")
+        if (tagsOnly.length === 0) throw new Error("Please input at least one tag/species.")
         data = await searchTagsOnly(tagsOnly)
       } else if (activeTab === "thumbnail") {
         if (!thumbnailUrl.trim()) throw new Error("Please input a thumbnail URL.")
@@ -279,7 +277,7 @@ export function SearchContainer() {
                       onChange={(e) =>
                         updateTagRow(row.id, "tag", e.target.value)
                       }
-                      className="flex-1"
+                      className="flex-1 bg-white dark:bg-slate-950"
                     />
                     <Input
                       type="number"
@@ -302,7 +300,7 @@ export function SearchContainer() {
                           updateTagRow(row.id, "count", 1)
                         }
                       }}
-                      className="w-24"
+                      className="w-24 bg-white dark:bg-slate-950"
                     />
                     <Button
                       variant="ghost"
@@ -335,13 +333,14 @@ export function SearchContainer() {
           <TabsContent value="tags-only" className="space-y-4">
             <div className="search-input-group">
               <span className="text-sm font-medium">Enter Species/Tags</span>
-              <Input
-                placeholder="Comma separated list (e.g. kangaroo, wombat)"
-                value={tagsOnly}
-                onChange={(e) => setTagsOnly(e.target.value)}
+              <TagInput
+                placeholder="e.g. kangaroo, koala, emu"
+                tags={tagsOnly}
+                onChange={setTagsOnly}
+                className="bg-white dark:bg-slate-950"
               />
               <p className="text-xs text-muted-foreground">
-                Matches files that contain at least one of each input tag.
+                Type a tag and press Enter or comma to confirm. Matches files that contain at least one of each input tag.
               </p>
             </div>
           </TabsContent>
@@ -354,6 +353,7 @@ export function SearchContainer() {
                 placeholder="s3://aussie-ecolens-s3-media/thumbnails/thumbnail.png"
                 value={thumbnailUrl}
                 onChange={(e) => setThumbnailUrl(e.target.value)}
+                className="bg-white dark:bg-slate-950"
               />
               <p className="text-xs text-muted-foreground">
                 Enter the exact S3 URI of the thumbnail to find the original full-sized file.

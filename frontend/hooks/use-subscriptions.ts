@@ -14,7 +14,7 @@ export function useSubscriptions(
 ) {
   const [subscriptions, setSubscriptions] = React.useState<SubscriptionItem[]>(initialSubscriptions)
   const [email, setEmail] = React.useState(initialIsSubscribed ? "" : (initialEmail || ""))
-  const [tagsString, setTagsString] = React.useState("")
+  const [tags, setTags] = React.useState<string[]>([])
   const [loading, setLoading] = React.useState(false)
   const [checkingStatus, setCheckingStatus] = React.useState(false)
   const [isEditing, setIsEditing] = React.useState(false)
@@ -56,7 +56,7 @@ export function useSubscriptions(
 
   const handleEdit = (sub: SubscriptionItem) => {
     setEmail(sub.email)
-    setTagsString(sub.tags.join(", "))
+    setTags(sub.tags)
     setIsEditing(true)
     setError(null)
     setSuccessMessage(null)
@@ -65,7 +65,7 @@ export function useSubscriptions(
   const handleCancelEdit = () => {
     const isSubscribed = subscriptions.some((sub) => sub.email.toLowerCase() === initialEmail?.toLowerCase())
     setEmail(isSubscribed ? "" : (initialEmail || ""))
-    setTagsString("")
+    setTags([])
     setIsEditing(false)
     setError(null)
     setSuccessMessage(null)
@@ -89,7 +89,7 @@ export function useSubscriptions(
       }
       
       if (email === emailToDelete) {
-        setTagsString("")
+        setTags([])
         setIsEditing(false)
       }
     } catch (err: any) {
@@ -110,18 +110,8 @@ export function useSubscriptions(
       return
     }
 
-    if (!tagsString.trim()) {
-      setError("Please specify at least one species tag.")
-      return
-    }
-
-    const tags = tagsString
-      .split(",")
-      .map((t) => t.trim().toLowerCase())
-      .filter((t) => t.length > 0)
-
     if (tags.length === 0) {
-      setError("Please enter valid comma-separated tags.")
+      setError("Please specify at least one species tag.")
       return
     }
 
@@ -143,7 +133,7 @@ export function useSubscriptions(
       
       const isSubscribed = list.some((sub) => sub.email.toLowerCase() === initialEmail?.toLowerCase())
       setEmail(isSubscribed ? "" : (initialEmail || ""))
-      setTagsString("")
+      setTags([])
       setIsEditing(false)
     } catch (err: any) {
       console.error(err)
@@ -157,8 +147,8 @@ export function useSubscriptions(
     subscriptions,
     email,
     setEmail,
-    tagsString,
-    setTagsString,
+    tags,
+    setTags,
     loading,
     checkingStatus,
     isEditing,
