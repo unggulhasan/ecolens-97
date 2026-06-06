@@ -115,6 +115,9 @@ def _write_tmp_record(file_id: str, file_type: str, checksum: str) -> None:
             "checksum": checksum,
             "status": "processing",
             "tags": {},
+            "thumbnail_urls": [],
+            "media_urls": [],
+            "is_found": False,
         })
         logger.info("Written tmp_query record for file_id=%s status=processing", file_id)
     except Exception as exc:
