@@ -18,6 +18,8 @@ import { Delete02Icon, Tag01Icon } from "@hugeicons/core-free-icons"
 import { useSession } from "next-auth/react"
 import { manageTags, deleteFiles } from "@/lib/api"
 import { SearchResultsPagination } from "@/components/search-results-pagination"
+import { AutocompleteInput } from "@/components/ui/autocomplete-input"
+import { WILDLIFE_SUGGESTIONS } from "@/lib/constants"
 import {
   type FileResult,
   type PaginationMeta,
@@ -27,6 +29,11 @@ import {
   countOthersInSelection,
   isVideoFile,
 } from "@/lib/file-results"
+
+type TagEditItem = {
+  name: string
+  count: number
+}
 
 type FileResultsPanelProps = {
   title: string
@@ -59,7 +66,7 @@ export function FileResultsPanel({
   const [viewMode, setViewMode] = React.useState<"grid" | "list">("list")
 
   const [showEditModal, setShowEditModal] = React.useState(false)
-  const [editTagsInput, setEditTagsInput] = React.useState("")
+  const [editTags, setEditTags] = React.useState<TagEditItem[]>([{ name: "", count: 1 }])
   const [editOperation, setEditOperation] = React.useState<1 | 0>(1)
   const [editLoading, setEditLoading] = React.useState(false)
   const [editResult, setEditResult] = React.useState<string | null>(null)
@@ -90,10 +97,7 @@ export function FileResultsPanel({
 
   const continueEditingTags = React.useCallback(() => {
     setEditResult(null)
-    setEditTagsInput("")
-    requestAnimationFrame(() => {
-      document.getElementById("edit-tags-input")?.focus()
-    })
+    setEditTags([{ name: "", count: 1 }])
   }, [])
 
   const toggleSelect = (url: string) => {
@@ -127,13 +131,16 @@ export function FileResultsPanel({
     }
 
     const file_urls = Array.from(selectedUrls)
-    const tags = editTagsInput
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean)
+    const tags = editTags
+      .map((t) => {
+        const name = t.name.trim().toLowerCase()
+        if (!name) return null
+        return editOperation === 1 ? `${name}:${t.count}` : name
+      })
+      .filter((t): t is string => t !== null)
 
     if (tags.length === 0) {
-      setEditResult("Error: Please enter at least one tag.")
+      setEditResult("Error: Please enter at least one valid tag name.")
       setEditLoading(false)
       return
     }
@@ -168,9 +175,23 @@ export function FileResultsPanel({
 
   const closeEditModal = () => {
     setShowEditModal(false)
-    setEditTagsInput("")
+    setEditTags([{ name: "", count: 1 }])
     setEditOperation(1)
     setEditResult(null)
+  }
+
+  const addTagRow = () => {
+    setEditTags((prev) => [...prev, { name: "", count: 1 }])
+  }
+
+  const removeTagRow = (index: number) => {
+    setEditTags((prev) => prev.filter((_, idx) => idx !== index))
+  }
+
+  const updateTagRow = (index: number, updates: Partial<TagEditItem>) => {
+    setEditTags((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, ...updates } : item))
+    )
   }
 
   const handleDelete = async () => {
@@ -274,7 +295,7 @@ export function FileResultsPanel({
                 setEditOperation(1)
                 if (editResult) {
                   setEditResult(null)
-                  setEditTagsInput("")
+                  setEditTags([{ name: "", count: 1 }])
                 }
               }}
             >
@@ -287,7 +308,7 @@ export function FileResultsPanel({
                 setEditOperation(0)
                 if (editResult) {
                   setEditResult(null)
-                  setEditTagsInput("")
+                  setEditTags([{ name: "", count: 1 }])
                 }
               }}
             >
@@ -295,16 +316,60 @@ export function FileResultsPanel({
             </Button>
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Tags</label>
-          <Input
-            id="edit-tags-input"
-            placeholder="e.g. koala, dingo, wombat"
-            value={editTagsInput}
-            onChange={(e) => setEditTagsInput(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Comma-separated list of tags.</p>
+        
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center">
+            <label className="text-sm font-medium">Tags</label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addTagRow}
+              className="h-8 px-2.5 text-xs rounded-full border-border hover:bg-accent"
+            >
+              + Add Tag
+            </Button>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            {editTags.map((tagItem, idx) => (
+              <div key={idx} className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <AutocompleteInput
+                    suggestions={WILDLIFE_SUGGESTIONS}
+                    placeholder="e.g. koala"
+                    value={tagItem.name}
+                    onChange={(e) => updateTagRow(idx, { name: e.target.value })}
+                    onSelectSuggestion={(val) => updateTagRow(idx, { name: val })}
+                    className="w-full bg-white dark:bg-slate-950 rounded-full border border-input"
+                  />
+                </div>
+                {editOperation === 1 && (
+                  <Input
+                    type="number"
+                    min="1"
+                    className="w-24 bg-white dark:bg-slate-950 rounded-full border border-input"
+                    placeholder="Count"
+                    value={tagItem.count}
+                    onChange={(e) => updateTagRow(idx, { count: parseInt(e.target.value) || 1 })}
+                  />
+                )}
+                {editTags.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeTagRow(idx)}
+                    className="text-muted-foreground hover:text-destructive p-1.5 transition-colors shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
+
         {editResult?.startsWith("Successfully") ? (
           <>
             <div className="text-sm text-primary bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
@@ -330,7 +395,7 @@ export function FileResultsPanel({
               </Button>
               <Button
                 onClick={handleEditTags}
-                disabled={!editTagsInput.trim() || editLoading}
+                disabled={!editTags.some((t) => t.name.trim() !== "") || editLoading}
                 className="upload-action-button"
               >
                 {editLoading ? "Applying..." : "Try Again"}
@@ -344,7 +409,7 @@ export function FileResultsPanel({
             </Button>
             <Button
               onClick={handleEditTags}
-              disabled={!editTagsInput.trim() || editLoading}
+              disabled={!editTags.some((t) => t.name.trim() !== "") || editLoading}
               className="upload-action-button"
             >
               {editLoading && (
