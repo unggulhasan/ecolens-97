@@ -4,12 +4,16 @@ resource "google_cloud_run_v2_job" "video_inference" {
 
   deletion_protection = false
 
+  depends_on = [
+    terraform_data.build_video_inference_image
+  ]
+
   template {
     template {
       service_account = google_service_account.inference_runtime.email
 
       containers {
-        image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/ecolens-repo/ecolens-video-inference:latest"
+        image = local.video_inference_image
         resources {
           limits = {
             cpu    = "4"

@@ -19,7 +19,8 @@ variable "gcp_region" {
   default     = "australia-southeast1"
 }
 
-variable "dockerhub_username" {
-  description = "Docker Hub username for the inference image"
+variable "image_tag" {
+  description = "Docker image tag used for inference images"
   type        = string
+  default     = "dev"
 }

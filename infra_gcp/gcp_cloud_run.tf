@@ -3,6 +3,10 @@ resource "google_cloud_run_v2_service" "inference" {
   location            = var.gcp_region
   deletion_protection = false
 
+  depends_on = [
+    terraform_data.build_image_inference_image
+  ]
+
   template {
 
     service_account                  = google_service_account.inference_runtime.email
@@ -14,7 +18,7 @@ resource "google_cloud_run_v2_service" "inference" {
     }
 
     containers {
-      image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/ecolens-repo/ecolens-inference:latest"
+      image = local.image_inference_image
       ports {
         container_port = 8080
       }
