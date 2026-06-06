@@ -53,6 +53,18 @@ def handler(event, context):
             'statusCode': 404,
             'body': json.dumps({'error': 'Temporary file not found. It may still be processing.'})
         }
+    
+    # Check if ML inference is complete
+    status = tmp_item.get('status', 'processing')
+    if status != 'complete':
+        return {
+        'statusCode': 202,
+        'body': json.dumps({
+            'status': 'processing',
+            'file_id': file_id,
+            'message': 'ML inference is still running. Please try again shortly.'
+        })
+        }
 
     detected_tags = tmp_item.get('tags', {})
 
