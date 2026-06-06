@@ -3,7 +3,7 @@ resource "random_id" "s3_suffix" {
 }
 
 resource "aws_s3_bucket" "s3_media" {
-  bucket        = "${var.media_bucket_name}-97"
+  bucket        = "${var.media_bucket_name}-${random_id.s3_suffix.hex}"
   force_destroy = true
 
   tags = local.common_tags
