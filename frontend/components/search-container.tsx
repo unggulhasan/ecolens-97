@@ -11,11 +11,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Upload01Icon, Image01Icon, Video01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { formatFileSize, validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
+import { useSession } from "next-auth/react"
+import { lookupByThumbnail, searchBySpecies } from "@/lib/api"
+import { formatFileResults, type FileResult } from "@/lib/file-results"
+import { FileResultsPanel } from "@/components/file-results-panel"
 
 type TagCountInput = {
   id: string
@@ -26,48 +29,42 @@ type TagCountInput = {
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
 export function SearchContainer() {
+  const { data: session } = useSession()
   const [activeTab, setActiveTab] = React.useState<string>("tags-count")
-  
-  // Ref to track the next unique ID for tag rows to avoid collisions when rows are deleted/added
   const nextRowIdRef = React.useRef<number>(2)
 
-  // Tab 1: Tags with Minimum Count state
+  // Tab 1
   const [tagsCount, setTagsCount] = React.useState<TagCountInput[]>([
     { id: "1", tag: "", count: 1 },
   ])
 
-  // Tab 2: Tags Only state
+  // Tab 2
   const [tagsOnly, setTagsOnly] = React.useState<string>("")
 
-  // Tab 3: Thumbnail URL state
+  // Tab 3
   const [thumbnailUrl, setThumbnailUrl] = React.useState<string>("")
 
-  // Tab 4: File Search state
+  // Tab 4
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
 
-  // Common Search UI state
+  // Search state
   const [searching, setSearching] = React.useState<boolean>(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [results, setResults] = React.useState<string[] | null>(null)
+  const [results, setResults] = React.useState<FileResult[] | null>(null)
+  const [hasSearched, setHasSearched] = React.useState(false)
 
-  // Disable search if any required input fields are empty/invalid
+  // ---- Search disabled logic ----
   const isSearchDisabled = React.useMemo(() => {
     if (activeTab === "tags-count") {
       return tagsCount.length === 0 || tagsCount.some(row => row.tag.trim() === "" || row.count === "")
     }
-    if (activeTab === "tags-only") {
-      return tagsOnly.trim() === ""
-    }
-    if (activeTab === "thumbnail") {
-      return thumbnailUrl.trim() === ""
-    }
-    if (activeTab === "file") {
-      return selectedFile === null
-    }
+    if (activeTab === "tags-only") return tagsOnly.trim() === ""
+    if (activeTab === "thumbnail") return thumbnailUrl.trim() === ""
+    if (activeTab === "file") return selectedFile === null
     return true
   }, [activeTab, tagsCount, tagsOnly, thumbnailUrl, selectedFile])
 
-  // Handle adding/removing tag inputs for Tab 1
+  // ---- Tag row handlers ----
   const addTagRow = () => {
     const nextId = nextRowIdRef.current.toString()
     nextRowIdRef.current += 1
@@ -80,133 +77,144 @@ export function SearchContainer() {
   }
 
   const updateTagRow = (id: string, field: "tag" | "count", value: string | number) => {
-    setTagsCount(
-      tagsCount.map((row) => {
-        if (row.id === id) {
-          return { ...row, [field]: value }
-        }
-        return row
-      })
-    )
+    setTagsCount(tagsCount.map((row) => row.id === id ? { ...row, [field]: value } : row))
   }
 
-  // Handle file selection for Tab 4 (image or video)
+  // ---- File handlers ----
   const validateAndSetFile = (file: File) => {
     const errorMsg = validateUploadedFile(file, MAX_SIZE_BYTES)
-    if (errorMsg) {
-      setError(errorMsg)
-      return
-    }
+    if (errorMsg) { setError(errorMsg); return }
     setSelectedFile(file)
   }
 
   const { dragActive, handleDrag, handleDrop } = useFileDragAndDrop(validateAndSetFile)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      validateAndSetFile(e.target.files[0])
-    }
+    if (e.target.files && e.target.files[0]) validateAndSetFile(e.target.files[0])
   }
 
   const removeSelectedFile = () => {
     setSelectedFile(null)
     setError(null)
     const fileInput = document.getElementById("search-file-input") as HTMLInputElement
-    if (fileInput) {
-      fileInput.value = ""
-    }
+    if (fileInput) fileInput.value = ""
   }
 
-  // Placeholder search API functions (to be integrated later)
-  const searchTagsCount = async (tags: TagCountInput[]): Promise<string[]> => {
-    // TODO: Implement actual query to /q1_tags_count
+  // ---- Placeholder search functions ----
+  const searchTagsCount = async (tags: TagCountInput[]): Promise<FileResult[]> => {
     console.log("Searching tags with minimum count:", tags)
-    // Simulating response payload
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-          "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
-        ])
-      }, 1000)
-    })
+    return new Promise((resolve) => setTimeout(() => resolve([
+      {
+        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
+        isOwner: true,
+        userId: "you@example.com",
+        tags: { kangaroo: 2 },
+      },
+      {
+        url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
+        isOwner: true,
+        userId: "you@example.com",
+        tags: { koala: 1, emu: 2 },
+      },
+      {
+        url: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-3/file3.jpg",
+        isOwner: false,
+        userId: "other@example.com",
+        tags: { dingo: 1 },
+      },
+    ]), 1000))
   }
 
-  const searchTagsOnly = async (tagsString: string): Promise<string[]> => {
-    // TODO: Implement actual query to /q2_species
-    console.log("Searching species/tags only:", tagsString)
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-        ])
-      }, 1000)
-    })
+  const searchTagsOnly = async (tagsString: string): Promise<FileResult[]> => {
+    const idToken = (session as { idToken?: string })?.idToken
+    if (!idToken) {
+      throw new Error("Not authenticated. Please log in again.")
+    }
+    const species = tagsString
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean)
+
+    if (species.length === 0) {
+      throw new Error("Please enter at least one tag/species.")
+    }
+
+    const data = await searchBySpecies(idToken, species)
+    const userEmail = session?.user?.email || ""
+    return formatFileResults(data, userEmail)
   }
 
-  const searchThumbnail = async (url: string): Promise<string[]> => {
-    // TODO: Implement actual query to /q3_thumbnail
-    console.log("Searching by thumbnail URL:", url)
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
-        ])
-      }, 1000)
-    })
+  const searchThumbnail = async (url: string): Promise<FileResult[]> => {
+    const idToken = (session as { idToken?: string })?.idToken
+    if (!idToken) {
+      throw new Error("Not authenticated. Please log in again.")
+    }
+    const data = await lookupByThumbnail(idToken, url)
+    const userEmail = session?.user?.email || ""
+    return formatFileResults([data], userEmail)
   }
 
-  const searchFile = async (file: File | null): Promise<string[]> => {
-    // TODO: Implement actual query to /q4_file_tags
-    console.log("Searching by uploaded file (image/video):", file)
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-          "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
-        ])
-      }, 1000)
-    })
+  const searchFile = async (file: File | null): Promise<FileResult[]> => {
+    console.log("Searching by uploaded file:", file)
+    return new Promise((resolve) => setTimeout(() => resolve([
+      {
+        url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
+        isOwner: true,
+        userId: "you@example.com",
+        tags: { kangaroo: 1 },
+      },
+      {
+        url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
+        s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
+        isOwner: false,
+        userId: "other@example.com",
+        tags: { dingo: 2 },
+      },
+    ]), 1000))
   }
 
-  // Trigger search action
+  // ---- Search handler ----
   const handleSearch = async () => {
+    setHasSearched(true)
     setSearching(true)
     setError(null)
     setResults(null)
 
     try {
-      let data: string[] = []
+      let data: FileResult[] = []
 
       if (activeTab === "tags-count") {
         const validTags = tagsCount
           .filter((t) => t.tag.trim() !== "")
           .map((t) => ({ ...t, count: t.count === "" ? 1 : Number(t.count) }))
-        if (validTags.length === 0) {
-          throw new Error("Please specify at least one tag.")
-        }
+        if (validTags.length === 0) throw new Error("Please specify at least one tag.")
         data = await searchTagsCount(validTags)
       } else if (activeTab === "tags-only") {
-        if (!tagsOnly.trim()) {
-          throw new Error("Please input at least one tag/species.")
-        }
+        if (!tagsOnly.trim()) throw new Error("Please input at least one tag/species.")
         data = await searchTagsOnly(tagsOnly)
       } else if (activeTab === "thumbnail") {
-        if (!thumbnailUrl.trim()) {
-          throw new Error("Please input a thumbnail URL.")
-        }
+        if (!thumbnailUrl.trim()) throw new Error("Please input a thumbnail URL.")
         data = await searchThumbnail(thumbnailUrl)
       } else if (activeTab === "file") {
-        if (!selectedFile) {
-          throw new Error("Please upload a file (image or video) to search.")
-        }
+        if (!selectedFile) throw new Error("Please upload a file (image or video) to search.")
         data = await searchFile(selectedFile)
       }
 
       setResults(data)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(err.message || "An unexpected error occurred during search.")
+      const message =
+        err instanceof Error ? err.message : "An unexpected error occurred during search."
+      setError(message)
     } finally {
       setSearching(false)
     }
@@ -221,30 +229,43 @@ export function SearchContainer() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="tags-count" onValueChange={setActiveTab} className="w-full">
+        <Tabs
+          defaultValue="tags-count"
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
           <TabsList className="search-tabs-list">
             <TabsTrigger value="tags-count">
               Tags with Minimum Count
             </TabsTrigger>
-            <TabsTrigger value="tags-only">
-              Tags Only
-            </TabsTrigger>
-            <TabsTrigger value="thumbnail">
-              Thumbnail&#39;s URL
-            </TabsTrigger>
-            <TabsTrigger value="file">
-              File
-            </TabsTrigger>
+            <TabsTrigger value="tags-only">Tags Only</TabsTrigger>
+            <TabsTrigger value="thumbnail">Thumbnail&#39;s URL</TabsTrigger>
+            <TabsTrigger value="file">File</TabsTrigger>
           </TabsList>
 
-          {/* Content 1: Tags with Minimum Count */}
+          {/* Tab 1 */}
           <TabsContent value="tags-count" className="space-y-4">
             <div className="search-input-group">
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Query Tags</span>
-                <Button onClick={addTagRow} variant="outline" size="sm" className="h-8">
-                  <svg className="size-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                <Button
+                  onClick={addTagRow}
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                >
+                  <svg
+                    className="mr-1 size-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   Add Tag
                 </Button>
@@ -255,7 +276,9 @@ export function SearchContainer() {
                     <Input
                       placeholder="Tag name (e.g. kangaroo)"
                       value={row.tag}
-                      onChange={(e) => updateTagRow(row.id, "tag", e.target.value)}
+                      onChange={(e) =>
+                        updateTagRow(row.id, "tag", e.target.value)
+                      }
                       className="flex-1"
                     />
                     <Input
@@ -264,10 +287,18 @@ export function SearchContainer() {
                       value={row.count}
                       onChange={(e) => {
                         const val = e.target.value
-                        updateTagRow(row.id, "count", val === "" ? "" : parseInt(val) || "")
+                        updateTagRow(
+                          row.id,
+                          "count",
+                          val === "" ? "" : parseInt(val) || ""
+                        )
                       }}
                       onBlur={() => {
-                        if (row.count === "" || isNaN(Number(row.count)) || Number(row.count) < 1) {
+                        if (
+                          row.count === "" ||
+                          isNaN(Number(row.count)) ||
+                          Number(row.count) < 1
+                        ) {
                           updateTagRow(row.id, "count", 1)
                         }
                       }}
@@ -278,10 +309,20 @@ export function SearchContainer() {
                       size="icon"
                       onClick={() => removeTagRow(row.id)}
                       disabled={tagsCount.length === 1}
-                      className="text-destructive hover:bg-destructive/10 shrink-0"
+                      className="shrink-0 text-destructive hover:bg-destructive/10"
                     >
-                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg
+                        className="size-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
                       </svg>
                     </Button>
                   </div>
@@ -290,7 +331,7 @@ export function SearchContainer() {
             </div>
           </TabsContent>
 
-          {/* Content 2: Tags Only */}
+          {/* Tab 2 */}
           <TabsContent value="tags-only" className="space-y-4">
             <div className="search-input-group">
               <span className="text-sm font-medium">Enter Species/Tags</span>
@@ -305,12 +346,12 @@ export function SearchContainer() {
             </div>
           </TabsContent>
 
-          {/* Content 3: Thumbnail URL */}
+          {/* Tab 3 */}
           <TabsContent value="thumbnail" className="space-y-4">
             <div className="search-input-group">
               <span className="text-sm font-medium">Thumbnail URL</span>
               <Input
-                placeholder="s3://aussie-ecolens-s3-media/images/thumbnail.png"
+                placeholder="s3://aussie-ecolens-s3-media/thumbnails/thumbnail.png"
                 value={thumbnailUrl}
                 onChange={(e) => setThumbnailUrl(e.target.value)}
               />
@@ -320,18 +361,12 @@ export function SearchContainer() {
             </div>
           </TabsContent>
 
-          {/* Content 4: File Search */}
+          {/* Tab 4 */}
           <TabsContent value="file" className="space-y-4">
             <div className="search-input-group">
               <span className="text-sm font-medium">Select File</span>
               <div
-                className={`upload-dropzone ${
-                  selectedFile
-                    ? "disabled"
-                    : dragActive
-                      ? "drag-active"
-                      : "cursor-pointer"
-                }`}
+                className={`upload-dropzone ${selectedFile ? "disabled" : dragActive ? "drag-active" : "cursor-pointer"}`}
                 onDragEnter={selectedFile ? undefined : handleDrag}
                 onDragOver={selectedFile ? undefined : handleDrag}
                 onDragLeave={selectedFile ? undefined : handleDrag}
@@ -339,7 +374,8 @@ export function SearchContainer() {
                 onClick={
                   selectedFile
                     ? undefined
-                    : () => document.getElementById("search-file-input")?.click()
+                    : () =>
+                        document.getElementById("search-file-input")?.click()
                 }
               >
                 <input
@@ -357,16 +393,15 @@ export function SearchContainer() {
                     strokeWidth={2}
                   />
                 </div>
-                <p className="font-medium text-sm">
+                <p className="text-sm font-medium">
                   Drag & drop your file here, or click to select
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Supports image and video files
                 </p>
               </div>
-
               {selectedFile && (
-                <div className="space-y-3 mt-4">
+                <div className="mt-4 space-y-3">
                   <h3 className="text-sm font-semibold">Selected File</h3>
                   <div className="selected-file-card">
                     <div className="flex min-w-0 items-center gap-3">
@@ -404,20 +439,34 @@ export function SearchContainer() {
             </div>
           </TabsContent>
 
-          {/* Trigger button and states */}
-          <div className="flex flex-col gap-4 pt-6 border-t mt-6">
-            {error && (
-              <div className="upload-error">
-                {error}
-              </div>
-            )}
-
+          {/* Search button */}
+          <div className="mt-6 flex flex-col gap-4 border-t pt-6">
+            {error && <div className="upload-error">{error}</div>}
             <div className="flex justify-end">
-              <Button onClick={handleSearch} disabled={searching || isSearchDisabled} className="upload-action-button">
+              <Button
+                onClick={handleSearch}
+                disabled={searching || isSearchDisabled}
+                className="upload-action-button"
+              >
                 {searching && (
-                  <svg className="upload-spinner" fill="none" viewBox="0 0 24 24">
-                    <circle className="upload-spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="upload-spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <svg
+                    className="upload-spinner"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="upload-spinner-circle"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="upload-spinner-path"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                 )}
                 {searching ? "Searching..." : "Execute Search"}
@@ -426,49 +475,14 @@ export function SearchContainer() {
           </div>
         </Tabs>
 
-        {/* Results Panel */}
-        {searching && (
-          <div className="search-results-grid">
-            <Skeleton className="h-40 rounded-xl" />
-            <Skeleton className="h-40 rounded-xl" />
-            <Skeleton className="h-40 rounded-xl" />
-          </div>
-        )}
-
-        {results && results.length > 0 && (
-          <div className="space-y-3 pt-6 border-t mt-6">
-            <h3 className="text-sm font-semibold">Search Results</h3>
-            <div className="search-results-grid">
-              {results.map((url, index) => {
-                const isVideo =
-                  url.toLowerCase().endsWith(".mp4") ||
-                  url.toLowerCase().endsWith(".mov") ||
-                  url.toLowerCase().endsWith(".avi")
-                return (
-                  <div key={index} className="search-result-card">
-                    {isVideo ? (
-                      <video src={url} controls className="search-result-video" />
-                    ) : (
-                      <img src={url} alt={`Result ${index + 1}`} className="search-result-image" />
-                    )}
-                    <div className="search-result-overlay">
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="search-result-link">
-                        View Full File
-                      </a>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {results && results.length === 0 && (
-          <div className="pt-6 border-t mt-6">
-            <div className="search-no-results">
-              <p className="text-muted-foreground">No matching files found.</p>
-            </div>
-          </div>
+        {hasSearched && (
+          <FileResultsPanel
+            title="Search Results"
+            results={results}
+            loading={searching}
+            onResultsChange={setResults}
+            emptyMessage="No matching files found."
+          />
         )}
       </CardContent>
     </Card>

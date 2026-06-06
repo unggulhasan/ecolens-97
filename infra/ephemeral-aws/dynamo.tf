@@ -184,6 +184,11 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_2_dynamodb" {
   policy_arn = aws_iam_policy.dynamodb_access.arn
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_2_s3" {
+  role       = aws_iam_role.lambda_exec_query_2.name
+  policy_arn = aws_iam_policy.s3_get_object_access.arn
+}
+
 resource "aws_lambda_function" "query_2" {
   function_name    = "${var.app_name}-${var.environment}-search-by-species"
   role             = aws_iam_role.lambda_exec_query_2.arn
@@ -250,6 +255,11 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_3_dynamodb" {
   policy_arn = aws_iam_policy.dynamodb_access.arn
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_3_s3" {
+  role       = aws_iam_role.lambda_exec_query_3.name
+  policy_arn = aws_iam_policy.s3_get_object_access.arn
+}
+
 resource "aws_lambda_function" "query_3" {
   function_name    = "${var.app_name}-${var.environment}-lookup-by-thumbnail"
   role             = aws_iam_role.lambda_exec_query_3.arn
@@ -314,6 +324,11 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_basic" {
 resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_dynamodb" {
   role       = aws_iam_role.lambda_exec_query_4.name
   policy_arn = aws_iam_policy.dynamodb_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_s3" {
+  role       = aws_iam_role.lambda_exec_query_4.name
+  policy_arn = aws_iam_policy.s3_get_object_access.arn
 }
 
 resource "aws_lambda_function" "query_4" {
@@ -393,8 +408,11 @@ resource "aws_lambda_function" "query_5" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
-      AWS_REGION_NAME     = var.aws_region
+      DYNAMODB_TABLE_NAME      = aws_dynamodb_table.media_files.name
+      SUBSCRIPTIONS_TABLE_NAME = aws_dynamodb_table.user_subscriptions.name
+      NOTIFICATIONS_TABLE_NAME = aws_dynamodb_table.user_notifications.name
+      AWS_REGION_NAME          = var.aws_region
+      SNS_TOPIC_ARN            = aws_sns_topic.media_alerts.arn
     }
   }
 

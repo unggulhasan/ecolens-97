@@ -10,7 +10,7 @@ from megadetector.visualization import visualization_utils as vis_utils
 CROP_DIR = "/tmp/crops"
 
 # got these from the sample config.
-CONFIDENCE_THRESHOLD = 0.05
+CONFIDENCE_THRESHOLD = 0.3
 SNIP_SIZE = 600
 
 def run_megadetector(local_image_path: str) -> list[dict]:

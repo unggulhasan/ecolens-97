@@ -48,12 +48,15 @@ resource "aws_iam_role_policy" "metadata_s3_dynamo" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "ReadThumbnailMetadata"
+        Sid      = "ReadS3Metadata"
         Effect   = "Allow"
         # HeadObject API call requires s3:GetObject in IAM, not s3:HeadObject.
         # s3:HeadObject does not exist as a separate IAM action.
         Action   = ["s3:GetObject"]
-        Resource = "arn:aws:s3:::${local.persistent_state.media_bucket_name}/thumbnails/*"
+        Resource = [
+          "arn:aws:s3:::${local.persistent_state.media_bucket_name}/thumbnails/*",
+          "arn:aws:s3:::${local.persistent_state.media_bucket_name}/videos/*"
+        ]
       },
       {
         Sid      = "WriteDynamoDB"

@@ -13,8 +13,8 @@ export default function AuthLayout({
   const mode = pathname === "/signup" ? "signup" : "login"
 
   return (
-    <div className="auth-page">
-      <AuthSplitCard mode={mode} redirectTo="/search" />
+    <div className="authPage">
+      <AuthSplitCard mode={mode} redirectTo="/home" />
       {children}
     </div>
   )

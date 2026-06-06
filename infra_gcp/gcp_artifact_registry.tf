@@ -3,4 +3,9 @@ resource "google_artifact_registry_repository" "inference_repo" {
   repository_id = "ecolens-repo"
   description   = "Docker repository for ECOLENS inference image"
   format        = "DOCKER"
+
+  depends_on = [
+    google_project_service.required_apis
+  ]
+
 }

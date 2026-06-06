@@ -24,6 +24,7 @@ export async function uploadFileToS3(
       "x-amz-meta-user-email": userEmail,
       "x-amz-meta-file-id": userFieldId,
       "x-amz-sdk-checksum-algorithm": "SHA256",
+      "If-None-Match": "*",
     },
     body: file,
   })

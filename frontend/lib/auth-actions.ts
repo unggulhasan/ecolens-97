@@ -28,11 +28,11 @@ function getUserPoolId() {
   return parts[parts.length - 1]
 }
 
-export async function signInWithCognito(redirectTo = "/search") {
+export async function signInWithCognito(redirectTo = "/home") {
   await signIn("cognito", { redirectTo })
 }
 
-export async function signUpWithCognito(redirectTo = "/search") {
+export async function signUpWithCognito(redirectTo = "/home") {
   await signIn("cognito-signup", { redirectTo })
 }
 
