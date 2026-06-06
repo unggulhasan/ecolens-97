@@ -33,4 +33,14 @@ variable "gcp_function_url" {
   type        = string
 }
 
+variable "callback_secret" {
+  description = "X-Callback-Secret for GCP Orchestrator authentication"
+  type        = string
+  sensitive   = true
+}
+
+variable "gcp_project_id" {
+  description = "GCP project ID"
+  type        = string
+}
 

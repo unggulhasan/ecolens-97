@@ -336,6 +336,24 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_s3" {
   policy_arn = aws_iam_policy.s3_get_object_access.arn
 }
 
+resource "aws_iam_policy" "tmp_query_read" {
+  name = "${var.app_name}-${var.environment}-tmp-query-read"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["dynamodb:GetItem"]
+      Resource = aws_dynamodb_table.tmp_query.arn
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_tmp" {
+  role       = aws_iam_role.lambda_exec_query_4.name
+  policy_arn = aws_iam_policy.tmp_query_read.arn
+}
+
 resource "aws_lambda_function" "query_4" {
   function_name    = "${var.app_name}-${var.environment}-detect-image-tags"
   role             = aws_iam_role.lambda_exec_query_4.arn
@@ -349,6 +367,7 @@ resource "aws_lambda_function" "query_4" {
       DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
       AWS_REGION_NAME     = var.aws_region
       GCP_ML_ENDPOINT     = var.gcp_ml_endpoint
+      TMP_TABLE_NAME      = aws_dynamodb_table.tmp_query.name
     }
   }
 

@@ -27,6 +27,7 @@ logger.setLevel(logging.INFO)
 MEDIA_BUCKET_NAME: str = os.environ["MEDIA_BUCKET_NAME"]
 REGION_NAME: str | None = os.environ.get("REGION_NAME")
 EVENT_BUS_NAME: str = os.environ.get("EVENT_BUS_NAME", "default")
+TMP_TABLE_NAME: str = os.environ.get("TMP_TABLE_NAME", "tmp_query")
 
 # ---------------------------------------------------------------------------
 # AWS clients
@@ -34,6 +35,7 @@ EVENT_BUS_NAME: str = os.environ.get("EVENT_BUS_NAME", "default")
 _config = Config(retries={"max_attempts": 5, "mode": "adaptive"})
 s3 = boto3.client("s3", region_name=REGION_NAME, config=_config)
 events = boto3.client("events", region_name=REGION_NAME)
+dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME, config=_config)
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +105,24 @@ def _emit_metadata_created(
         logger.error("Failed to emit MetadataCreated: %s", exc)
         raise
 
+def _write_tmp_record(file_id: str, file_type: str, checksum: str) -> None:
+    """Write initial processing record to tmp_query table."""
+    table = dynamodb.Table(TMP_TABLE_NAME)
+    try:
+        table.put_item(Item={
+            "file_id": file_id,
+            "file_type": file_type,
+            "checksum": checksum,
+            "status": "processing",
+            "tags": {},
+            "thumbnail_urls": [],
+            "media_urls": [],
+            "is_found": False,
+        })
+        logger.info("Written tmp_query record for file_id=%s status=processing", file_id)
+    except Exception as exc:
+        logger.error("Failed to write tmp_query record: %s", exc)
+        raise
 
 # ---------------------------------------------------------------------------
 # Lambda entry point
@@ -145,7 +165,18 @@ def handle(event: dict, context) -> dict:
         file_type=file_type,
     )
 
+    _write_tmp_record(
+    file_id=file_id,
+    file_type=file_type,
+    checksum=checksum,
+    )
+
     return {
-        "statusCode": 200,
-        "body": json.dumps({"file_id": file_id, "file_type": file_type, "job_type": "temporary"}),
-    }
+    "statusCode": 200,
+    "body": json.dumps({
+        "file_id": file_id,
+        "file_type": file_type,
+        "job_type": "temporary",
+        "status": "processing"
+    }),
+}

@@ -90,7 +90,7 @@ resource "aws_iam_role_policy" "accept_results" {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = local.persistent_state.callback_secret_arn
-      }
+      },
     ]
   })
 }
