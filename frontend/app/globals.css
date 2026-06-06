@@ -905,9 +905,6 @@
     align-items: center;
     justify-content: center;
     padding: 3rem 1.5rem;
-    background-color: color-mix(in oklch, var(--muted) 30%, transparent);
-    border: 1px dashed var(--border);
-    border-radius: var(--radius-xl);
     text-align: center;
   }
 

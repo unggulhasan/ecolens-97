@@ -62,9 +62,9 @@ def handle(event, context):
     matching = []
     for item in items:
         item_tags = item.get('tags', {})
-        # Just needs at least 1 of each species — no minimum count
+        # Just needs at least 1 of each species — no minimum count. Support substring matching.
         match = all(
-            item_tags.get(species, 0) >= 1
+            any(species.strip().lower() in tag_name.lower() and count >= 1 for tag_name, count in item_tags.items())
             for species in species_list
         )
         if match:

@@ -169,6 +169,30 @@ export async function searchBySpecies(
   return (data.results || []) as SearchBySpeciesResponseItem[]
 }
 
+export async function searchByTags(
+  idToken: string,
+  tags: Record<string, number>
+): Promise<SearchBySpeciesResponseItem[]> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
+
+  const response = await fetch(`${baseUrl}/search-by-tags`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(tags),
+  })
+
+  if (!response.ok) {
+    throw new Error(`search-by-tags returned ${response.status}`)
+  }
+
+  const data = await response.json()
+  return (data.results || []) as SearchBySpeciesResponseItem[]
+}
+
 export type PaginatedFilesResponse = {
   page: number
   page_size: number

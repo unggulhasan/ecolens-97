@@ -61,7 +61,7 @@ resource "aws_iam_policy" "s3_delete_access" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["s3:DeleteObject"]
-      Resource = "arn:aws:s3:::${var.app_name}-${var.environment}-*/*"
+      Resource = "${local.persistent_state.media_bucket_arn}/*"
     }]
   })
 }
@@ -116,6 +116,11 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_1_basic" {
 resource "aws_iam_role_policy_attachment" "lambda_exec_query_1_dynamodb" {
   role       = aws_iam_role.lambda_exec_query_1.name
   policy_arn = aws_iam_policy.dynamodb_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_1_s3" {
+  role       = aws_iam_role.lambda_exec_query_1.name
+  policy_arn = aws_iam_policy.s3_get_object_access.arn
 }
 
 resource "aws_lambda_function" "query_1" {

@@ -10,6 +10,8 @@ interface TagInputProps {
   disabled?: boolean
   className?: string
   id?: string
+  inputValue?: string
+  onInputChange?: (value: string) => void
 }
 
 export function TagInput({
@@ -19,13 +21,27 @@ export function TagInput({
   placeholder = "Add tags...",
   disabled = false,
   className = "",
-  id
+  id,
+  inputValue: controlledInputValue,
+  onInputChange
 }: TagInputProps) {
-  const [inputValue, setInputValue] = React.useState("")
+  const [internalInputValue, setInternalInputValue] = React.useState("")
   const [showSuggestions, setShowSuggestions] = React.useState(false)
   const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const isControlled = controlledInputValue !== undefined
+  const inputValue = isControlled ? controlledInputValue : internalInputValue
+
+  const setInputValue = (val: string) => {
+    if (onInputChange) {
+      onInputChange(val)
+    }
+    if (!isControlled) {
+      setInternalInputValue(val)
+    }
+  }
 
   const filteredSuggestions = React.useMemo(() => {
     if (!suggestions || !inputValue.trim()) return []

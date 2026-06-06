@@ -67,16 +67,35 @@ def handle(event, context):
             newly_added_tags = []
 
             if operation == 1:
-                # Add tags — set to 1 if not present, don't overwrite existing counts
+                # Add tags — set/update to specified count (format: "tag:count")
                 for tag in tags:
-                    normalized_tag = tag.strip().lower()
-                    if normalized_tag not in existing_tags:
-                        existing_tags[normalized_tag] = Decimal(1)
-                        newly_added_tags.append(normalized_tag)
+                    count = 1
+                    tag_name = tag
+                    if ':' in tag:
+                        parts = tag.split(':', 1)
+                        tag_name = parts[0]
+                        try:
+                            count = int(parts[1])
+                        except ValueError:
+                            count = 1
+                    elif '=' in tag:
+                        parts = tag.split('=', 1)
+                        tag_name = parts[0]
+                        try:
+                            count = int(parts[1])
+                        except ValueError:
+                            count = 1
+
+                    normalized_tag = tag_name.strip().lower()
+                    if normalized_tag:
+                        if normalized_tag not in existing_tags:
+                            newly_added_tags.append(normalized_tag)
+                        existing_tags[normalized_tag] = Decimal(count)
             else:
                 # Remove tags — ignore if not present (as per spec)
                 for tag in tags:
-                    normalized_tag = tag.strip().lower()
+                    tag_name = tag.split(':', 1)[0].split('=', 1)[0]
+                    normalized_tag = tag_name.strip().lower()
                     existing_tags.pop(normalized_tag, None)
 
             # Update the record using PK
