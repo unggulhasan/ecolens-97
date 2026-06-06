@@ -4,8 +4,12 @@ locals {
   base_image_uri      = local.persistent_state.base_image_uri
 }
 
+resource "random_id" "thumbrepo_suffix" {
+  byte_length = 4
+}
+
 resource "aws_ecr_repository" "thumbnail" {
-  name         = "thumbnail"
+  name         = "thumbnail-${random_id.thumbrepo_suffix.hex}"
   force_delete = true
 
   tags = local.common_tags

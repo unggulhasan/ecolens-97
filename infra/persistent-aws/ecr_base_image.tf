@@ -4,8 +4,12 @@ locals {
     docker_registry = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com"
 }
 
+resource "random_id" "opencv_suffix" {
+  byte_length = 4
+}
+
 resource "aws_ecr_repository" "registry" {
-  name         = "base-opencv-numpy"
+  name         = "base-opencv-numpy-${random_id.opencv_suffix.hex}"
   force_delete = true
 
   tags = local.common_tags
