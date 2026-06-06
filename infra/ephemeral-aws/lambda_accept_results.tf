@@ -90,6 +90,12 @@ resource "aws_iam_role_policy" "accept_results" {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = local.persistent_state.callback_secret_arn
+      },
+      {
+        Sid      = "UpdateTmpTable"
+        Effect   = "Allow"
+        Action   = ["dynamodb:GetItem","dynamodb:PutItem"]
+        Resource = aws_dynamodb_table.tmp_query.arn
       }
     ]
   })
