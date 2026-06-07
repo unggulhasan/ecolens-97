@@ -32,3 +32,4 @@ ml_models/*.jpg
 **/.venv/
 __pycache__/
 *.py[cod]
+.vercel
