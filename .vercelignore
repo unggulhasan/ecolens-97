@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+models
+infra
+model-converter
+model-test
+functions
+*.log
+.DS_Store
+.env.local
+.env.*.local
