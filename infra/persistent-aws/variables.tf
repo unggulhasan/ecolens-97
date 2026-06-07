@@ -32,3 +32,21 @@ variable "callback_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "cognito_callback_urls" {
+  description = "List of allowed callback URLs for the Cognito user pool client"
+  type        = list(string)
+  default = [
+    "http://localhost:3000/api/auth/callback/cognito",
+    "http://localhost:3000/api/auth/callback/cognito-signup",
+  ]
+}
+
+variable "cognito_logout_urls" {
+  description = "List of allowed logout URLs for the Cognito user pool client"
+  type        = list(string)
+  default = [
+    "http://localhost:3000",
+    "http://localhost:3000/login",
+  ]
+}

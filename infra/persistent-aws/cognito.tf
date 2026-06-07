@@ -72,15 +72,9 @@ resource "aws_cognito_user_pool_client" "main" {
   prevent_user_existence_errors = "ENABLED"
   supported_identity_providers  = ["COGNITO"]
 
-  callback_urls = [
-    "http://localhost:3000/api/auth/callback/cognito",
-    "http://localhost:3000/api/auth/callback/cognito-signup",
-  ]
+  callback_urls = var.cognito_callback_urls
 
-  logout_urls = [
-    "http://localhost:3000",
-    "http://localhost:3000/login",
-  ]
+  logout_urls = var.cognito_logout_urls
 
   explicit_auth_flows = [
     "ALLOW_REFRESH_TOKEN_AUTH"
