@@ -237,3 +237,43 @@ export async function listAllFiles(
     results: (data.results || []) as SearchBySpeciesResponseItem[],
   }
 }
+
+// ----------------------------- QUERY 4 — Detect Image Tags (Search with File) -------------------
+
+export type DetectImageTagsResponse = {
+  status: "processing" | "success"
+  results?: SearchBySpeciesResponseItem[]
+  detected_tags?: string[]
+}
+
+export async function detectImageTags(
+  idToken: string,
+  fileId: string
+): Promise<DetectImageTagsResponse> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured")
+
+  const response = await fetch(`${baseUrl}/detect-image-tags`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ file_id: fileId }),
+  })
+
+  if (response.status === 202 || response.status === 404) {
+    return { status: "processing" }
+  }
+
+  if (!response.ok) {
+    throw new Error(`detect-image-tags returned ${response.status}`)
+  }
+
+  const data = await response.json()
+  return {
+    status: "success",
+    results: (data.results || []) as SearchBySpeciesResponseItem[],
+    detected_tags: data.detected_tags || [],
+  }
+}

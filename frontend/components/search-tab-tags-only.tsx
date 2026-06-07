@@ -1,5 +1,5 @@
 import * as React from "react"
-import { TagInput } from "@/components/ui/tag-input"
+import { TagInput } from "@/components/tag-input"
 import { WILDLIFE_SUGGESTIONS } from "@/lib/constants"
 
 type SearchTabTagsOnlyProps = {

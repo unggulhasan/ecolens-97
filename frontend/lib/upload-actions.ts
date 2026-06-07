@@ -5,7 +5,8 @@ import { auth } from "@/auth"
 export async function getPresignedUrl(
   filename: string,
   fileType: string,
-  checksum: string
+  checksum: string,
+  tmpQuery: boolean = false
 ) {
   const session = await auth()
   if (!session?.idToken) {
@@ -27,6 +28,7 @@ export async function getPresignedUrl(
       filename,
       file_type: fileType,
       checksum,
+      tmp_query: tmpQuery,
     }),
   })
 

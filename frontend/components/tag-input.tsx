@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { TagPill } from "@/components/tag-pill"
+import { SuggestionsList } from "@/components/suggestions-list"
 
 interface TagInputProps {
   tags: string[]
@@ -149,37 +151,12 @@ export function TagInput({
       >
         {/* Tag Pills */}
         {tags.map((tag, idx) => (
-          <span
+          <TagPill
             key={`${tag}-${idx}`}
-            className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-0.5 text-xs font-semibold text-secondary-foreground border border-border"
-          >
-            <span>{tag}</span>
-            {!disabled && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleRemoveTag(idx)
-                }}
-                className="text-muted-foreground hover:text-foreground shrink-0 focus:outline-none"
-                aria-label={`Remove tag ${tag}`}
-              >
-                <svg
-                  className="size-3"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </span>
+            tag={tag}
+            onRemove={() => handleRemoveTag(idx)}
+            disabled={disabled}
+          />
         ))}
 
         {/* Input element */}
@@ -206,25 +183,12 @@ export function TagInput({
       </div>
 
       {/* Dropdown Suggestions */}
-      {showSuggestions && filteredSuggestions.length > 0 && (
-        <ul className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-card py-1 text-sm shadow-md focus:outline-none bg-white dark:bg-slate-950">
-          {filteredSuggestions.map((suggestion, idx) => {
-            const isActive = idx === activeSuggestionIndex
-            return (
-              <li
-                key={suggestion}
-                onClick={() => selectSuggestion(suggestion)}
-                className={`relative cursor-pointer select-none px-4 py-2 text-foreground ${
-                  isActive
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                {suggestion}
-              </li>
-            )
-          })}
-        </ul>
+      {showSuggestions && (
+        <SuggestionsList
+          suggestions={filteredSuggestions}
+          activeIndex={activeSuggestionIndex}
+          onSelect={selectSuggestion}
+        />
       )}
     </div>
   )

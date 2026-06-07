@@ -336,6 +336,11 @@ resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_s3" {
   policy_arn = aws_iam_policy.s3_get_object_access.arn
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_exec_query_4_s3_delete" {
+  role       = aws_iam_role.lambda_exec_query_4.name
+  policy_arn = aws_iam_policy.s3_delete_access.arn
+}
+
 resource "aws_iam_policy" "tmp_query_read" {
   name = "${var.app_name}-${var.environment}-tmp-query-read"
 
@@ -343,7 +348,7 @@ resource "aws_iam_policy" "tmp_query_read" {
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["dynamodb:GetItem"]
+      Action   = ["dynamodb:GetItem", "dynamodb:DeleteItem"]
       Resource = aws_dynamodb_table.tmp_query.arn
     }]
   })
@@ -368,6 +373,7 @@ resource "aws_lambda_function" "query_4" {
       AWS_REGION_NAME     = var.aws_region
       GCP_ML_ENDPOINT     = var.gcp_ml_endpoint
       TMP_TABLE_NAME      = aws_dynamodb_table.tmp_query.name
+      MEDIA_BUCKET_NAME   = local.persistent_state.media_bucket_name
     }
   }
 
