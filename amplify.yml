@@ -6,7 +6,7 @@ frontend:
         - cd frontend && npm ci
     build:
       commands:
-        - cd ${CODEBUILD_SRC_DIR}/frontend && npm run build
+        - npm --prefix frontend run build
   artifacts:
     baseDirectory: frontend/.next
     files:
