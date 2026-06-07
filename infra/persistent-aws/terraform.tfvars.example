@@ -1,0 +1,13 @@
+# Copy this file to terraform.tfvars (which is gitignored) before applying.
+# Only override these if your project name or region differs from the defaults.
+
+app_name    = "aussie-ecolens"
+environment = "prod"
+
+aws_region            = "ap-southeast-4"
+cognito_domain_prefix = "aussie-ecolens"
+media_bucket_name     = "aussie-ecolens-media-0590a6a0"
+
+# Generate once: openssl rand -hex 32
+# Must match callback_secret in persistent-gcp/terraform.tfvars
+callback_secret = "generate with: openssl rand -hex 32; value must be same between persistent-aws and persistent-gcp"

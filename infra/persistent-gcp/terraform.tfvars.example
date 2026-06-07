@@ -1,0 +1,12 @@
+# Copy this file to terraform.tfvars (which is gitignored) before applying.
+# Only override these if your project name or region differs from the defaults.
+
+app_name    = "aussie-ecolens"
+environment = "prod"
+
+gcp_project_id = "ecolens-498408"
+gcp_region     = "australia-southeast2"
+
+# Generate once: openssl rand -hex 32
+# Must match callback_secret in persistent-aws/terraform.tfvars
+callback_secret = "generate with: openssl rand -hex 32; value must be same between persistent-aws and persistent-gcp"

@@ -13,5 +13,11 @@ terraform {
       version = "~> 3.3"
     }
   }
-  backend "local" {}
+  backend "s3" {
+    bucket         = "aussie-ecolens-tfstate"
+    key            = "persistent-aws/terraform.tfstate"
+    region         = "ap-southeast-4"
+    encrypt        = true
+    dynamodb_table = "aussie-ecolens-tf-locks"
+  }
 }

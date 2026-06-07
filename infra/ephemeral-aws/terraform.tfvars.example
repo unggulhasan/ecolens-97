@@ -1,0 +1,14 @@
+# Copy this file to terraform.tfvars (which is gitignored) before applying.
+# Only override these if your project name or region differs from the defaults.
+
+app_name    = "aussie-ecolens"
+environment = "prod"
+
+aws_region = "ap-southeast-4"
+
+# AUTH_SECRET for NextAuth — generate with: openssl rand -hex 32
+auth_secret = "generate with: openssl rand -hex 32"
+
+# Injected automatically by deploy.sh via TF_VAR_gcp_function_url.
+# To set manually: cd ../ephemeral-gcp && terraform output gcp_function_url
+gcp_function_url = ""
