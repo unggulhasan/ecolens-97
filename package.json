@@ -1,8 +1,4 @@
 {
   "name": "ecolens-97",
-  "private": true,
-  "scripts": {
-    "build": "cd frontend && npm run build",
-    "start": "cd frontend && npm run start"
-  }
+  "private": true
 }
