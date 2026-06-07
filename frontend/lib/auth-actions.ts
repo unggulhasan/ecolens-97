@@ -43,6 +43,11 @@ export async function signUpWithCognitoAdmin(formData: {
 }) {
   try {
     const userPoolId = getUserPoolId()
+    console.log("signUpWithCognitoAdmin:", {
+      userPoolId,
+      hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
+      region: process.env.AWS_REGION,
+    })
 
     const command = new AdminCreateUserCommand({
       UserPoolId: userPoolId,
