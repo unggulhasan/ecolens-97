@@ -1,5 +1,4 @@
 /node_modules
-/package.json
 *.terraform.tfstate
 .idea/
 .vscode/
