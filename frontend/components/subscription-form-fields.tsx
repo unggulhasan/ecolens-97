@@ -2,7 +2,7 @@ import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { TagInput } from "@/components/ui/tag-input"
+import { TagInput } from "@/components/tag-input"
 import { WILDLIFE_SUGGESTIONS } from "@/lib/constants"
 
 type SubscriptionFormFieldsProps = {
