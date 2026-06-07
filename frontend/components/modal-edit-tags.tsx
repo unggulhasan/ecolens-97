@@ -36,6 +36,7 @@ export function ModalEditTags({
     setEditOperation,
     editLoading,
     editResult,
+    setEditResult,
     closeEditModal,
     continueEditingTags,
     addTagRow,
@@ -95,8 +96,7 @@ export function ModalEditTags({
               onClick={() => {
                 setEditOperation(1)
                 if (editResult) {
-                  setEditResult(null)
-                  setEditTags([{ name: "", count: 1 }])
+                  continueEditingTags()
                 }
               }}
             >
@@ -108,8 +108,7 @@ export function ModalEditTags({
               onClick={() => {
                 setEditOperation(0)
                 if (editResult) {
-                  setEditResult(null)
-                  setEditTags([{ name: "", count: 1 }])
+                  continueEditingTags()
                 }
               }}
             >
