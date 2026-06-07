@@ -6,6 +6,7 @@ import { Delete02Icon, Tag01Icon } from "@hugeicons/core-free-icons"
 type FileResultsToolbarProps = {
   title: string
   statusLabel?: string
+  detectedTags?: string[] | null
   anySelected: boolean
   selectedCount: number
   othersInSelection: number
@@ -19,6 +20,7 @@ type FileResultsToolbarProps = {
 export function FileResultsToolbar({
   title,
   statusLabel,
+  detectedTags,
   anySelected,
   selectedCount,
   othersInSelection,
@@ -34,6 +36,21 @@ export function FileResultsToolbar({
         <h3 className="text-sm font-semibold">{title}</h3>
         {statusLabel && (
           <span className="text-xs text-muted-foreground">{statusLabel}</span>
+        )}
+        {detectedTags && detectedTags.length > 0 && (
+          <div className="flex items-center gap-1.5 border-l pl-3 ml-1 border-border">
+            <span className="text-xs text-muted-foreground font-medium">Inferred Tags:</span>
+            <div className="flex flex-wrap gap-1">
+              {detectedTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary border border-primary/20 transition-all duration-300 hover:bg-primary/20"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
         {anySelected && (
           <span className="text-xs text-muted-foreground">

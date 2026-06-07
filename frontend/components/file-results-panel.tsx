@@ -26,11 +26,13 @@ type FileResultsPanelProps = {
   onAfterDelete?: (deletedCount: number) => void | Promise<void>
   onAfterTagsUpdate?: (updates: TagUpdate[]) => void
   emptyMessage?: string
+  detectedTags?: string[] | null
 }
 
 export function FileResultsPanel({
   title,
   statusLabel,
+  detectedTags,
   results,
   loading,
   pagination,
@@ -71,6 +73,7 @@ export function FileResultsPanel({
           <FileResultsToolbar
             title={title}
             statusLabel={statusLabel}
+            detectedTags={detectedTags}
             anySelected={anySelected}
             selectedCount={selectedCount}
             othersInSelection={othersInSelection}

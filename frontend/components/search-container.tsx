@@ -44,6 +44,7 @@ export function SearchContainer() {
     addTagRow,
     removeTagRow,
     updateTagRow,
+    detectedTags,
   } = useSearch()
 
   return (
@@ -151,6 +152,7 @@ export function SearchContainer() {
             results={results}
             loading={searching}
             onResultsChange={setResults}
+            detectedTags={detectedTags}
             emptyMessage="No matching files found."
           />
         )}

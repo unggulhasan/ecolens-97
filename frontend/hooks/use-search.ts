@@ -40,6 +40,7 @@ export function useSearch() {
   const [error, setError] = React.useState<string | null>(null)
   const [results, setResults] = React.useState<FileResult[] | null>(null)
   const [hasSearched, setHasSearched] = React.useState(false)
+  const [detectedTags, setDetectedTags] = React.useState<string[] | null>(null)
 
   // Disabled logic
   const isSearchDisabled = React.useMemo(() => {
@@ -210,9 +211,10 @@ export function useSearch() {
         const response = await detectImageTags(idToken, presignData.file_id)
         if (response.status === "success") {
           const userEmail = session?.user?.email || ""
+          setDetectedTags(response.detected_tags || [])
           return formatFileResults(response.results || [], userEmail)
         }
-        await delay(3000)
+        await delay(2000)
       }
 
       throw new Error("Search timed out waiting for ML inference. Please try again.")
@@ -225,6 +227,7 @@ export function useSearch() {
     setSearching(true)
     setError(null)
     setResults(null)
+    setDetectedTags(null)
 
     try {
       let data: FileResult[] = []
@@ -308,5 +311,6 @@ export function useSearch() {
     addTagRow,
     removeTagRow,
     updateTagRow,
+    detectedTags,
   }
 }
