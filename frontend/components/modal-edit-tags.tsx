@@ -44,7 +44,6 @@ export function ModalEditTags({
     setRemoveTagsInput,
     editLoading,
     editResult,
-    setEditResult,
     closeEditModal,
     continueEditingTags,
     addTagRow,
