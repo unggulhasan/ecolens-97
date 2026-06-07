@@ -36,19 +36,14 @@ from botocore.config import Config
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-<<<<<<< HEAD
-REGION_NAME         = os.environ.get("REGION_NAME", "ap-southeast-4")
-DYNAMODB_TABLE_NAME = os.environ["DYNAMODB_TABLE_NAME"]
 TMP_DYNAMODB_TABLE_NAME = os.environ["TMP_DYNAMODB_TABLE_NAME"]
 CALLBACK_SECRET_ARN = os.environ["CALLBACK_SECRET_ARN"]
-=======
 REGION_NAME              = os.environ.get("REGION_NAME", "ap-southeast-4")
 DYNAMODB_TABLE_NAME      = os.environ["DYNAMODB_TABLE_NAME"]
 CALLBACK_SECRET_ARN      = os.environ["CALLBACK_SECRET_ARN"]
 SUBSCRIPTIONS_TABLE_NAME = os.environ.get("SUBSCRIPTIONS_TABLE_NAME")
 NOTIFICATIONS_TABLE_NAME = os.environ.get("NOTIFICATIONS_TABLE_NAME")
 SNS_TOPIC_ARN            = os.environ.get("SNS_TOPIC_ARN")
->>>>>>> 64f3ae05979954aaa0d79c4faf2e8f73faf9bcee
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
 table    = dynamodb.Table(DYNAMODB_TABLE_NAME)
