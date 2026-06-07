@@ -35,12 +35,18 @@ def seed(n=10):
         # 70% complete, 30% still processing
         status = 'complete' if random.random() < 0.7 else 'processing'
 
+        is_complete = status == 'complete'
+        n_results = random.randint(1, 3) if is_complete else 0
+
         item = {
             'file_id': file_id,
             'file_type': file_type,
             'checksum': checksum,
             'status': status,
-            'tags': random_tags() if status == 'complete' else {},
+            'tags': random_tags() if is_complete else {},
+            'thumbnail_urls': [f"https://example.com/thumbnails/{uuid.uuid4()}.jpg" for _ in range(n_results)],
+            'media_urls': [f"https://example.com/media/{uuid.uuid4()}.{'mp4' if file_type == 'video' else 'jpg'}" for _ in range(n_results)],
+            'is_found': is_complete,
         }
 
         table.put_item(Item=item)
