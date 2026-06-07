@@ -4,7 +4,8 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { AutocompleteInput } from "@/components/ui/autocomplete-input"
+import { AutocompleteInput } from "@/components/autocomplete-input"
+import { TagInput } from "@/components/tag-input"
 import { WILDLIFE_SUGGESTIONS } from "@/lib/constants"
 import { useEditTags } from "@/hooks/use-edit-tags"
 import { type TagUpdate, type FileResult } from "@/lib/file-results"
@@ -13,6 +14,7 @@ type EditTagsModalProps = {
   isOpen: boolean
   onClose: () => void
   selectedUrls: Set<string>
+  results: FileResult[] | null
   onAfterTagsUpdate?: (updates: TagUpdate[]) => void
   onResultsChange?: React.Dispatch<React.SetStateAction<FileResult[] | null>>
 }
@@ -21,6 +23,7 @@ export function ModalEditTags({
   isOpen,
   onClose,
   selectedUrls,
+  results,
   onAfterTagsUpdate,
   onResultsChange,
 }: EditTagsModalProps) {
@@ -33,7 +36,12 @@ export function ModalEditTags({
   const {
     editTags,
     editOperation,
-    setEditOperation,
+    selectOperation,
+    existingTags,
+    removeTags,
+    setRemoveTags,
+    removeTagsInput,
+    setRemoveTagsInput,
     editLoading,
     editResult,
     setEditResult,
@@ -45,12 +53,22 @@ export function ModalEditTags({
     handleEditTags,
   } = useEditTags({
     selectedUrls,
+    results,
     onAfterTagsUpdate,
     onResultsChange,
     onClose,
   })
 
   const selectedCount = selectedUrls.size
+
+  const isSubmitDisabled = React.useMemo(() => {
+    if (editLoading) return true
+    if (editOperation === 1) {
+      return !editTags.some((t) => t.name.trim() !== "")
+    } else {
+      return removeTags.length === 0 && removeTagsInput.trim() === ""
+    }
+  }, [editLoading, editOperation, editTags, removeTags, removeTagsInput])
 
   if (!isOpen || !mounted) return null
 
@@ -93,24 +111,14 @@ export function ModalEditTags({
             <Button
               variant={editOperation === 1 ? "default" : "outline"}
               className="flex-1"
-              onClick={() => {
-                setEditOperation(1)
-                if (editResult) {
-                  continueEditingTags()
-                }
-              }}
+              onClick={() => selectOperation(1)}
             >
               Add Tags
             </Button>
             <Button
               variant={editOperation === 0 ? "destructive" : "outline"}
               className="flex-1"
-              onClick={() => {
-                setEditOperation(0)
-                if (editResult) {
-                  continueEditingTags()
-                }
-              }}
+              onClick={() => selectOperation(0)}
             >
               Remove Tags
             </Button>
@@ -120,35 +128,37 @@ export function ModalEditTags({
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium">Tags</label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addTagRow}
-              className="h-8 rounded-full border-border px-2.5 text-xs hover:bg-accent"
-            >
-              + Add Tag
-            </Button>
+            {editOperation === 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addTagRow}
+                className="h-8 rounded-full border-border px-2.5 text-xs hover:bg-accent"
+              >
+                + Add Tag
+              </Button>
+            )}
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {editTags.map((tagItem, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <div className="flex-1">
-                  <AutocompleteInput
-                    suggestions={WILDLIFE_SUGGESTIONS}
-                    placeholder="Tag name (e.g. wombat)"
-                    value={tagItem.name}
-                    onChange={(e) =>
-                      updateTagRow(idx, { name: e.target.value })
-                    }
-                    onSelectSuggestion={(val) =>
-                      updateTagRow(idx, { name: val })
-                    }
-                    className="w-full rounded-full border border-input bg-white dark:bg-slate-950"
-                  />
-                </div>
-                {editOperation === 1 && (
+            {editOperation === 1 ? (
+              editTags.map((tagItem, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <AutocompleteInput
+                      suggestions={WILDLIFE_SUGGESTIONS}
+                      placeholder="Tag name (e.g. wombat)"
+                      value={tagItem.name}
+                      onChange={(e) =>
+                        updateTagRow(idx, { name: e.target.value })
+                      }
+                      onSelectSuggestion={(val) =>
+                        updateTagRow(idx, { name: val })
+                      }
+                      className="w-full rounded-full border border-input bg-white dark:bg-slate-950"
+                    />
+                  </div>
                   <Input
                     type="number"
                     min="1"
@@ -161,30 +171,40 @@ export function ModalEditTags({
                       })
                     }
                   />
-                )}
-                {editTags.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeTagRow(idx)}
-                    className="shrink-0 p-1.5 text-muted-foreground transition-colors hover:text-destructive"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
+                  {editTags.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeTagRow(idx)}
+                      className="shrink-0 p-1.5 text-muted-foreground transition-colors hover:text-destructive"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            ))}
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <TagInput
+                placeholder="Tag name (e.g. wombat)"
+                tags={removeTags}
+                onChange={setRemoveTags}
+                inputValue={removeTagsInput}
+                onInputChange={setRemoveTagsInput}
+                suggestions={existingTags}
+                className="bg-white dark:bg-slate-950"
+              />
+            )}
           </div>
         </div>
 
@@ -213,9 +233,7 @@ export function ModalEditTags({
               </Button>
               <Button
                 onClick={handleEditTags}
-                disabled={
-                  !editTags.some((t) => t.name.trim() !== "") || editLoading
-                }
+                disabled={isSubmitDisabled}
                 className="upload-action-button"
               >
                 {editLoading ? "Applying..." : "Try Again"}
@@ -229,9 +247,7 @@ export function ModalEditTags({
             </Button>
             <Button
               onClick={handleEditTags}
-              disabled={
-                !editTags.some((t) => t.name.trim() !== "") || editLoading
-              }
+              disabled={isSubmitDisabled}
               className="upload-action-button"
             >
               {editLoading && (

@@ -1,9 +1,11 @@
 import * as React from "react"
 import { useSession } from "next-auth/react"
-import { lookupByThumbnail, searchBySpecies, searchByTags } from "@/lib/api"
+import { lookupByThumbnail, searchBySpecies, searchByTags, detectImageTags } from "@/lib/api"
 import { formatFileResults, type FileResult } from "@/lib/file-results"
 import { validateUploadedFile } from "@/lib/file-utils"
 import { useFileDragAndDrop } from "@/hooks/use-file-drag-drop"
+import { getPresignedUrl } from "@/lib/upload-actions"
+import { calculateChecksum, uploadFileToS3 } from "@/lib/s3-client"
 
 export type TagCountInput = {
   id: string
@@ -13,7 +15,7 @@ export type TagCountInput = {
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
-export function useSearch() {
+export function useSearchState() {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = React.useState<string>("tags-count")
   const nextRowIdRef = React.useRef<number>(2)
@@ -38,6 +40,7 @@ export function useSearch() {
   const [error, setError] = React.useState<string | null>(null)
   const [results, setResults] = React.useState<FileResult[] | null>(null)
   const [hasSearched, setHasSearched] = React.useState(false)
+  const [detectedTags, setDetectedTags] = React.useState<string[] | null>(null)
 
   // Disabled logic
   const isSearchDisabled = React.useMemo(() => {
@@ -170,33 +173,53 @@ export function useSearch() {
 
   const searchFile = React.useCallback(
     async (file: File | null): Promise<FileResult[]> => {
-      console.log("Searching by uploaded file:", file)
-      return new Promise((resolve) =>
-        setTimeout(
-          () =>
-            resolve([
-              {
-                url: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-                fullUrl: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=500&auto=format&fit=crop",
-                s3Url: "s3://mock-bucket/images/uuid-1/file1.jpg",
-                isOwner: true,
-                userId: "you@example.com",
-                tags: { kangaroo: 1 },
-              },
-              {
-                url: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
-                fullUrl: "https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=500&auto=format&fit=crop",
-                s3Url: "s3://mock-bucket/images/uuid-2/file2.jpg",
-                isOwner: false,
-                userId: "other@example.com",
-                tags: { dingo: 2 },
-              },
-            ]),
-          1000
-        )
+      const idToken = (session as { idToken?: string })?.idToken
+      if (!idToken) {
+        throw new Error("Not authenticated. Please log in again.")
+      }
+      if (!file) {
+        throw new Error("Please select a file to search.")
+      }
+
+      // 1. Calculate file checksum
+      const computedChecksum = await calculateChecksum(file)
+
+      // 2. Request S3 presigned URL with tmpQuery: true
+      const presignData = await getPresignedUrl(
+        file.name,
+        file.type,
+        computedChecksum,
+        true
       )
+
+      // 3. Upload file bytes directly to S3
+      await uploadFileToS3(
+        presignData.url,
+        file,
+        computedChecksum,
+        presignData.user_email,
+        presignData.file_id
+      )
+
+      // 4. Poll /detect-image-tags every 2 seconds for results
+      let attempts = 0
+      const maxAttempts = 30 // up to 60 seconds
+      const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+      while (attempts < maxAttempts) {
+        attempts++
+        const response = await detectImageTags(idToken, presignData.file_id)
+        if (response.status === "success") {
+          const userEmail = session?.user?.email || ""
+          setDetectedTags(response.detected_tags || [])
+          return formatFileResults(response.results || [], userEmail)
+        }
+        await delay(2000)
+      }
+
+      throw new Error("Search timed out waiting for ML inference. Please try again.")
     },
-    []
+    [session]
   )
 
   const handleSearch = React.useCallback(async () => {
@@ -204,6 +227,7 @@ export function useSearch() {
     setSearching(true)
     setError(null)
     setResults(null)
+    setDetectedTags(null)
 
     try {
       let data: FileResult[] = []
@@ -287,5 +311,18 @@ export function useSearch() {
     addTagRow,
     removeTagRow,
     updateTagRow,
+    detectedTags,
   }
+}
+
+export type SearchContextValue = ReturnType<typeof useSearchState>
+
+export const SearchContext = React.createContext<SearchContextValue | null>(null)
+
+export function useSearch() {
+  const context = React.useContext(SearchContext)
+  if (!context) {
+    throw new Error("useSearch must be used within SearchProvider")
+  }
+  return context
 }

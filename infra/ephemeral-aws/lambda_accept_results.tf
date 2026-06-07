@@ -83,7 +83,7 @@ resource "aws_iam_role_policy" "accept_results" {
       {
         Sid    = "UpdateInferenceTags"
         Effect = "Allow"
-        Action = ["dynamodb:UpdateItem", "dynamodb:GetItem"]
+        Action = ["dynamodb:UpdateItem", "dynamodb:GetItem", "dynamodb:Scan"]
         # GetItem is also granted so the Lambda can confirm the record exists
         # before UpdateItem (used by the ConditionalExpression path).
         Resource = aws_dynamodb_table.media_files.arn
@@ -99,7 +99,8 @@ resource "aws_iam_role_policy" "accept_results" {
         Effect = "Allow"
         Action = [
           "dynamodb:PutItem",
-          "dynamodb:UpdateItem"
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem"
         ]
         Resource = aws_dynamodb_table.tmp_query.arn
       },

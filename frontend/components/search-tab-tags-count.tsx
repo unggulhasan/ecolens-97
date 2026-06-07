@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { AutocompleteInput } from "@/components/ui/autocomplete-input"
+import { AutocompleteInput } from "@/components/autocomplete-input"
 import { WILDLIFE_SUGGESTIONS } from "@/lib/constants"
 import { type TagCountInput } from "@/hooks/use-search"
 

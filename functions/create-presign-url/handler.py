@@ -34,7 +34,8 @@ def handle(event, context):
         return _error(400, "Missing required field: checksum")
 
     # Dedup check: reject if checksum already exists in DynamoDB
-    if _checksum_exists(checksum):
+    # Skip this check for temporary queries (tmp_query is True)
+    if not tmp_query and _checksum_exists(checksum):
         return _error(409, f"Duplicate file: checksum already exists")
 
     directory = _dir_for(file_type, file_id, tmp_query)

@@ -105,7 +105,7 @@ def _emit_metadata_created(
         logger.error("Failed to emit MetadataCreated: %s", exc)
         raise
 
-def _write_tmp_record(file_id: str, file_type: str, checksum: str) -> None:
+def _write_tmp_record(file_id: str, file_type: str, checksum: str, s3_key: str) -> None:
     """Write initial processing record to tmp_query table."""
     table = dynamodb.Table(TMP_TABLE_NAME)
     try:
@@ -118,6 +118,7 @@ def _write_tmp_record(file_id: str, file_type: str, checksum: str) -> None:
             "thumbnail_urls": [],
             "media_urls": [],
             "is_found": False,
+            "s3_key": s3_key,
         })
         logger.info("Written tmp_query record for file_id=%s status=processing", file_id)
     except Exception as exc:
@@ -166,9 +167,10 @@ def handle(event: dict, context) -> dict:
     )
 
     _write_tmp_record(
-    file_id=file_id,
-    file_type=file_type,
-    checksum=checksum,
+        file_id=file_id,
+        file_type=file_type,
+        checksum=checksum,
+        s3_key=decoded_key,
     )
 
     return {
