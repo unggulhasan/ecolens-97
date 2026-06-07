@@ -15,7 +15,7 @@ export type TagCountInput = {
 
 const MAX_SIZE_BYTES = 1024 * 1024 * 1024 // 1GB
 
-export function useSearch() {
+export function useSearchState() {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = React.useState<string>("tags-count")
   const nextRowIdRef = React.useRef<number>(2)
@@ -313,4 +313,16 @@ export function useSearch() {
     updateTagRow,
     detectedTags,
   }
+}
+
+export type SearchContextValue = ReturnType<typeof useSearchState>
+
+export const SearchContext = React.createContext<SearchContextValue | null>(null)
+
+export function useSearch() {
+  const context = React.useContext(SearchContext)
+  if (!context) {
+    throw new Error("useSearch must be used within SearchProvider")
+  }
+  return context
 }

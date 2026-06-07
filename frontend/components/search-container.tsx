@@ -57,7 +57,7 @@ export function SearchContainer() {
       </CardHeader>
       <CardContent>
         <Tabs
-          defaultValue="tags-count"
+          value={activeTab}
           onValueChange={setActiveTab}
           className="w-full"
         >
