@@ -6,7 +6,7 @@ resource "aws_cloudwatch_event_connection" "gcp_orchestrator" {
   auth_parameters {
     api_key {
       key   = "X-Callback-Secret"
-      value = var.callback_secret
+      value = local.persistent_state.callback_secret_value
     }
   }
 }

@@ -7,5 +7,6 @@ environment = "prod"
 gcp_project_id = "ecolens-498408"
 gcp_region     = "australia-southeast2"
 
-# Output of: cd infra/ephemeral-aws && terraform output inference_results_urls
-aws_results_url = ["get from: cd ../ephemeral-aws && terraform output -json inference_results_urls"]
+# Injected automatically by deploy.sh via TF_VAR_aws_results_url.
+# To set manually: cd ../ephemeral-aws && terraform output -raw inference_results_url
+aws_results_url = []

@@ -1,6 +1,8 @@
 data "terraform_remote_state" "persistent" {
-  backend = "local"
+  backend = "s3"
   config = {
-    path = "${path.module}/../persistent-gcp/terraform.tfstate"
+    bucket = "aussie-ecolens-tfstate"
+    key    = "persistent-gcp/terraform.tfstate"
+    region = "ap-southeast-4"
   }
 }

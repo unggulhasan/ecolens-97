@@ -22,25 +22,10 @@ variable "auth_secret" {
   sensitive   = true
 }
 
-variable "gcp_ml_endpoint" {
-  description = "GCP ML tagger endpoint URL for Query 4"
-  type        = string
-  default     = ""
-}
-
 variable "gcp_function_url" {
   description = "GCP Cloud Function URL that accepts inference requests from EventBridge (output of ephemeral-gcp)"
   type        = string
 }
 
-variable "callback_secret" {
-  description = "X-Callback-Secret for GCP Orchestrator authentication"
-  type        = string
-  sensitive   = true
-}
 
-variable "gcp_project_id" {
-  description = "GCP project ID"
-  type        = string
-}
 

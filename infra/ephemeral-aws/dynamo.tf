@@ -366,7 +366,6 @@ resource "aws_lambda_function" "query_4" {
     variables = {
       DYNAMODB_TABLE_NAME = aws_dynamodb_table.media_files.name
       AWS_REGION_NAME     = var.aws_region
-      GCP_ML_ENDPOINT     = var.gcp_ml_endpoint
       TMP_TABLE_NAME      = aws_dynamodb_table.tmp_query.name
     }
   }
