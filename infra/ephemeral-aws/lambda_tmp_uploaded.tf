@@ -22,6 +22,7 @@ resource "aws_lambda_function" "tmp_uploaded" {
       MEDIA_BUCKET_NAME = local.persistent_state.media_bucket_name
       REGION_NAME       = var.aws_region
       EVENT_BUS_NAME    = "default"
+      TMP_TABLE_NAME    = aws_dynamodb_table.tmp_query.name
     }
   }
 
@@ -60,6 +61,12 @@ resource "aws_iam_role_policy" "tmp_uploaded_s3_events" {
         Effect   = "Allow"
         Action   = ["events:PutEvents"]
         Resource = "arn:aws:events:${var.aws_region}:${data.aws_caller_identity.current.account_id}:event-bus/default"
+      },
+      {
+        Sid    = "WriteTmpQueryRecord"
+        Effect = "Allow"
+        Action = ["dynamodb:PutItem"]
+        Resource = aws_dynamodb_table.tmp_query.arn
       }
     ]
   })
