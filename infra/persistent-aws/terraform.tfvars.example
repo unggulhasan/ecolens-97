@@ -11,3 +11,12 @@ media_bucket_name     = "aussie-ecolens-media-0590a6a0"
 # Generate once: openssl rand -hex 32
 # Must match callback_secret in persistent-gcp/terraform.tfvars
 callback_secret = "generate with: openssl rand -hex 32; value must be same between persistent-aws and persistent-gcp"
+
+cognito_callback_urls = [
+  "http://localhost:3000/api/auth/callback/cognito",
+  "http://localhost:3000/api/auth/callback/cognito-signup",
+]
+cognito_logout_urls = [
+  "http://localhost:3000",
+  "http://localhost:3000/login",
+]
