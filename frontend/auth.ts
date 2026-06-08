@@ -44,14 +44,12 @@ const authConfig = {
         token.idToken = account.id_token
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at
-        console.log("Initial token:", token)
-        
+
         if (profile) {
           const givenName = (profile as any).given_name || ""
           const familyName = (profile as any).family_name || ""
           token.name = (profile as any).name || `${givenName} ${familyName}`.trim() || (profile as any).email || null
         }
-        console.log("Initial token:", token)
       }
 
       if (Date.now() < (token.expiresAt as number) * 1000) {
