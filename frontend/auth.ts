@@ -1,7 +1,7 @@
 import NextAuth, { type NextAuthConfig } from "next-auth"
 import Cognito from "next-auth/providers/cognito"
 import type { JWT } from "next-auth/jwt"
-import { getCognitoSignUpAuthorizationUrl } from "@/lib/cognito"
+import { getCognitoSignUpAuthorizationUrl, getCognitoRegionFromIssuer } from "@/lib/cognito"
 
 const cognitoSignUpAuthorizationUrl =
   process.env.AUTH_COGNITO_DOMAIN && process.env.AUTH_COGNITO_ISSUER
@@ -81,7 +81,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
 
 async function refreshAccessToken(token: JWT) {
   try {
-    const url = `${process.env.AUTH_COGNITO_ISSUER}/oauth2/token`
+    const domain = process.env.AUTH_COGNITO_DOMAIN
+    const issuer = process.env.AUTH_COGNITO_ISSUER
+    if (!domain || !issuer) {
+      throw new Error("AUTH_COGNITO_DOMAIN and AUTH_COGNITO_ISSUER must be configured")
+    }
+    const region = getCognitoRegionFromIssuer(issuer)
+    const url = `https://${domain}.auth.${region}.amazoncognito.com/oauth2/token`
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
