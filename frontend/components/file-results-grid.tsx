@@ -74,12 +74,11 @@ export function FileResultsGrid({
                   Not yours
                 </div>
               )}
-              {isVideo ? (
+              {isVideo && result.url === result.fullUrl ? (
                 <video
                   src={result.url}
-                  controls
-                  className="search-result-video"
-                  onClick={(e) => e.stopPropagation()}
+                  className="search-result-image"
+                  preload="metadata"
                 />
               ) : (
                 <img

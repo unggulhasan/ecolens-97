@@ -32,11 +32,14 @@ export function FileResultRow({
       onClick={() => onToggleSelect(result.s3Url)}
     >
       <TableCell>
-        <ListCheckbox checked={isSelected} />
+        <ListCheckbox
+          checked={isSelected}
+          onClick={() => onToggleSelect(result.s3Url)}
+        />
       </TableCell>
       <TableCell>
         <div className="h-12 w-12 overflow-hidden rounded-lg bg-muted">
-          {isVideo ? (
+          {isVideo && result.url === result.fullUrl ? (
             <video
               src={result.url}
               className="h-full w-full object-cover"
