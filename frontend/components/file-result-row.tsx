@@ -39,7 +39,7 @@ export function FileResultRow({
       </TableCell>
       <TableCell>
         <div className="h-12 w-12 overflow-hidden rounded-lg bg-muted">
-          {isVideo ? (
+          {isVideo && result.url === result.fullUrl ? (
             <video
               src={result.url}
               className="h-full w-full object-cover"
